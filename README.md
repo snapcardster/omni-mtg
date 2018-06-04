@@ -1,1 +1,3 @@
-# omniscience
+# omni-mtg
+
+sync tool
