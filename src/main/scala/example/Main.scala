@@ -1,15 +1,15 @@
 package example
 
-import java.awt.Desktop
 import java.io.ByteArrayInputStream
-import java.net.URI
 import java.util.Base64
 
 import com.jfoenix.controls.{JFXButton, JFXSlider, JFXTextArea, JFXTextField}
 import javafx.application._
+import javafx.beans.binding.BooleanBinding
+import javafx.beans.property.Property
 import javafx.geometry.Insets
 import javafx.scene._
-import javafx.scene.control.{Hyperlink, Label}
+import javafx.scene.control.{Hyperlink, Label, TextInputControl}
 import javafx.scene.image.Image
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout.{GridPane, HBox, Region, VBox}
@@ -28,37 +28,71 @@ class Main extends Application {
 
   def pad(x: Region): Unit = x.setPadding(new Insets(2.0))
 
+  def linkTo(field: TextInputControl, prop: Property[String]): Unit = {
+    field.textProperty().bindBidirectional(prop)
+  }
+
+  def linkTo(field: JFXSlider, prop: Property[Number]): Unit = {
+    field.valueProperty().bindBidirectional(prop)
+  }
+
+  def bindSave(x: JFXButton): Unit = {
+    x.setOnMouseClicked(_ => controller.save())
+  }
+
   override def start(primaryStage: Stage): Unit = {
+    controller.start()
+
     val title = "Omni MTG Sync Tool"
     val main = new VBox(
       new Label(title),
-      set(new JFXButton("Test"))(_.setStyle(buttonCss)),
-      new Label("Sync interval"),
-      new JFXSlider(0, 100, 50),
+      set(new JFXButton("Sync"))(x => {
+        x.setStyle(buttonCss)
+        val fields = List(
+          controller.mkmAppToken, controller.mkmAppSecret, controller.mkmAccessToken, controller.mkmAccessTokenSecret,
+          controller.snapUser, controller.snapToken
+        )
+        x.disableProperty().bind(fields.map(_.isEmpty).reduce(_ or _))
+        x.setOnMouseClicked(_ => {
+          controller.running.setValue(!controller.running.getValue)
+          val txt =
+            if (controller.running.getValue)
+              "Running, click to stop"
+            else
+              "Stopped, click to start"
+          x.setText(txt)
+        })
+      }),
+      new Label("Sync interval in seconds"),
+      set(new JFXSlider(1, 60 * 24, 50))(linkTo(_, controller.interval)),
       new Label("Out"),
-      new JFXTextArea("Output...")
+      set(new JFXTextArea("Output..."))(linkTo(_, controller.output))
     )
 
-    val button = set(new JFXButton("📋 Paste from Clipboard"))(_.setStyle(button2Css))
+    val button = set(new JFXButton("📋 Paste from Clipboard"))(x => {
+      x.setStyle(button2Css)
+      x.setOnMouseClicked(_ => controller.insertFromClip("mkm"))
+    })
     val mkm = new VBox(
       new HBox(new Label("MKM Api Key"), button),
       set(new Hyperlink("https://cardmarket.com/en/Magic/MainPage/showMyAccount"))(_.setOnMouseClicked(x => handleClick(x))),
-      set(new JFXTextField("MKM App Token"))(pad),
-      set(new JFXTextField("MKM App Secret"))(pad),
-      set(new JFXTextField("MKM Access Token"))(pad),
-      set(new JFXTextField("MKM Access Token Secret"))(pad),
-      set(new JFXButton("💾 Save"))(_.setStyle(buttonCss))
+      set(new JFXTextField("MKM App Token"))(linkTo(_, controller.mkmAppToken)),
+      set(new JFXTextField("MKM App Secret"))(linkTo(_, controller.mkmAppSecret)),
+      set(new JFXTextField("MKM Access Token"))(linkTo(_, controller.mkmAccessToken)),
+      set(new JFXTextField("MKM Access Token Secret"))(linkTo(_, controller.mkmAccessTokenSecret)),
+      saveBtn()
     )
 
-    val button2 = set(new JFXButton("📋 Paste from Clipboard"))(_.setStyle(button2Css))
+    val button2 = set(new JFXButton("📋 Paste from Clipboard"))(x => {
+      x.setStyle(button2Css)
+      x.setOnMouseClicked(_ => controller.insertFromClip("snap"))
+    })
     val snap = new VBox(
       new HBox(new Label("Snapcardster Api Key"), button2),
       set(new Hyperlink("https://snapcardster.com/app"))(_.setOnMouseClicked(x => handleClick(x))),
-      set(new JFXTextField("User"))(x => {
-        pad(x)
-      }),
-      set(new JFXTextField("Token"))(pad),
-      set(new JFXButton("💾 Save"))(_.setStyle(buttonCss))
+      set(new JFXTextField("User"))(linkTo(_, controller.snapUser)),
+      set(new JFXTextField("Token"))(linkTo(_, controller.snapToken)),
+      saveBtn()
     )
 
     // 🔍 📜 ⌚ 🗃 💾 📋 👌
@@ -73,8 +107,17 @@ class Main extends Application {
     primaryStage.setTitle(title)
     primaryStage.getIcons.add(new Image(new ByteArrayInputStream(Base64.getDecoder.decode(imageBase64))))
 
+    pane.setStyle("-fx-background-color:WHITE;-fx-padding:40;")
+
     primaryStage.setScene(new Scene(pane))
-    primaryStage.show
+    primaryStage.show()
+  }
+
+  def saveBtn(): JFXButton = {
+    set(new JFXButton("💾 Save"))(x => {
+      x.setStyle(buttonCss)
+      bindSave(x)
+    })
   }
 
   def handleClick(event: MouseEvent): Unit = {
@@ -87,5 +130,4 @@ class Main extends Application {
     modify(node)
     node
   }
-
 }
