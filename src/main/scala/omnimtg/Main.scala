@@ -1,12 +1,12 @@
-package example
+package omnimtg
 
 import java.io.ByteArrayInputStream
 import java.util.Base64
 
 import com.jfoenix.controls.{JFXButton, JFXSlider, JFXTextArea, JFXTextField}
 import javafx.application._
-import javafx.beans.binding.BooleanBinding
 import javafx.beans.property.Property
+import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.geometry.Insets
 import javafx.scene._
 import javafx.scene.control.{Hyperlink, Label, TextInputControl}
@@ -43,9 +43,16 @@ class Main extends Application {
   override def start(primaryStage: Stage): Unit = {
     controller.start()
 
+    val ch = new ChangeListener[Any] {
+      override def changed(observable: ObservableValue[_ <: Any], oldValue: Any, newValue: Any): Unit = {
+        controller.aborted.setValue(true)
+      }
+    }
+    primaryStage.onCloseRequestProperty.addListener(ch)
+
     val title = "Omni MTG Sync Tool"
     val main = new VBox(
-      new Label(title),
+      new Label("\n\n\n"),
       set(new JFXButton("Sync"))(x => {
         x.setStyle(buttonCss)
         val fields = List(
@@ -63,10 +70,13 @@ class Main extends Application {
           x.setText(txt)
         })
       }),
-      new Label("Sync interval in seconds"),
-      set(new JFXSlider(1, 60 * 24, 50))(linkTo(_, controller.interval)),
+      new Label("Sync interval in minutes"),
+      set(new JFXSlider(1, 1000, 60))(linkTo(_, controller.interval)),
       new Label("Out"),
-      set(new JFXTextArea("Output..."))(linkTo(_, controller.output))
+      set(new JFXTextArea("Output..."))(x => {
+        linkTo(x, controller.output)
+        x.setDisable(true)
+      })
     )
 
     val button = set(new JFXButton("📋 Paste from Clipboard"))(x => {
@@ -74,8 +84,9 @@ class Main extends Application {
       x.setOnMouseClicked(_ => controller.insertFromClip("mkm"))
     })
     val mkm = new VBox(
-      new HBox(new Label("MKM Api Key"), button),
+      new Label("MKM Api Key"),
       set(new Hyperlink("https://cardmarket.com/en/Magic/MainPage/showMyAccount"))(_.setOnMouseClicked(x => handleClick(x))),
+      button,
       set(new JFXTextField("MKM App Token"))(linkTo(_, controller.mkmAppToken)),
       set(new JFXTextField("MKM App Secret"))(linkTo(_, controller.mkmAppSecret)),
       set(new JFXTextField("MKM Access Token"))(linkTo(_, controller.mkmAccessToken)),
@@ -88,8 +99,9 @@ class Main extends Application {
       x.setOnMouseClicked(_ => controller.insertFromClip("snap"))
     })
     val snap = new VBox(
-      new HBox(new Label("Snapcardster Api Key"), button2),
+      new Label("Snapcardster Api Key"),
       set(new Hyperlink("https://snapcardster.com/app"))(_.setOnMouseClicked(x => handleClick(x))),
+      button2,
       set(new JFXTextField("User"))(linkTo(_, controller.snapUser)),
       set(new JFXTextField("Token"))(linkTo(_, controller.snapToken)),
       saveBtn()
@@ -98,11 +110,14 @@ class Main extends Application {
     // 🔍 📜 ⌚ 🗃 💾 📋 👌
     val pane = new GridPane
     val titleLabel = new Label(title)
+    titleLabel.setScaleX(2)
+    titleLabel.setScaleY(2)
+
     pane.add(titleLabel, 0, 0, 2, 1)
     pane.add(set(mkm)(pad), 0, 1)
     pane.add(set(snap)(pad), 1, 1)
     pane.add(set(main)(pad), 0, 2, 2, 1)
-    pane.setPadding(new Insets(60.0))
+    pane.setPadding(new Insets(30.0))
 
     primaryStage.setTitle(title)
     primaryStage.getIcons.add(new Image(new ByteArrayInputStream(Base64.getDecoder.decode(imageBase64))))
