@@ -1,3 +1,3 @@
 # omni-mtg
 
-sync tool
+![example](screenshot.png "Example")
