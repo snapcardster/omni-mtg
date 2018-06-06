@@ -161,7 +161,7 @@ class MainController {
 
   private def postToSnap(csv: String) = {
     val auth = snapUser.getValue + "," + snapToken.getValue
-    val baseUrl = "https://test.snapcardster.com"
+    val baseUrl = "https://api.snapcardster.com"
     val endpoint = "/importer/sellerdata/from/csv"
     val url = baseUrl + endpoint
 

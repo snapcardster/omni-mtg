@@ -20,10 +20,15 @@ tags
 .*.swo
 
 dist/*
-target/
+target/.history
+target/streams
+target/scala-2.12/classes
+target/scala-2.12/resolution-cache
+target/scala-2.12/test-classes
 lib_managed/
 src_managed/
 project/boot/
+project/target/
 project/plugins/project/
 .history
 .cache

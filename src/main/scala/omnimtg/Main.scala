@@ -110,8 +110,8 @@ class Main extends Application {
     // 🔍 📜 ⌚ 🗃 💾 📋 👌
     val pane = new GridPane
     val titleLabel = new Label(title)
-    titleLabel.setScaleX(2)
-    titleLabel.setScaleY(2)
+    titleLabel.setScaleX(1.4)
+    titleLabel.setScaleY(1.4)
 
     pane.add(titleLabel, 0, 0, 2, 1)
     pane.add(set(mkm)(pad), 0, 1)
