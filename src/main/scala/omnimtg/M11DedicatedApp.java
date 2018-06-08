@@ -5,6 +5,7 @@ import javax.crypto.spec.SecretKeySpec;
 import javax.xml.bind.DatatypeConverter;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -151,9 +152,19 @@ public class M11DedicatedApp {
             connection.addRequestProperty("Authorization", authorizationProperty);
             connection.setRequestMethod(method);
             if (body != null) {
-                // TODO take from SnapConnector
+                connection.setRequestProperty("Content-Type", "application/xml");
+                connection.setRequestProperty("Accept", "application/xml");
+                connection.setUseCaches(false);
+                connection.setDoInput(true);
+                connection.setDoOutput(true);
+                connection.connect();
+
+                byte[] outputInBytes = body.getBytes("UTF-8");
+                OutputStream os = connection.getOutputStream();
+                os.write(outputInBytes);
+            } else {
+                connection.connect();
             }
-            connection.connect();
 
             // from here standard actions...
             // read response code... read input stream.... close connection...

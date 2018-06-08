@@ -141,14 +141,13 @@ class MainController {
       while (!aborted.getValue) try {
         if (running.getValue) {
           try {
-            val json: String = loadChangedFromSnap()
-            output.setValue(new Date() + "\n" + changedEndpoint + "\n" + json)
+            loadSnapChangedAndDeleteFromStock
 
-            /*val csv = loadMkmStock()
+            val csv = loadMkmStock()
             output.setValue(new Date() + "\n" + csv.split("\n").length + " lines read from mkm stock")
 
             val res: String = postToSnap(csv)
-            output.setValue(new Date() + "\n" + csvEndpoint + "\n" + res)*/
+            output.setValue(new Date() + "\n" + csvEndpoint + "\n" + res)
           } catch {
             case e: Exception => handleEx(e)
           }
@@ -174,6 +173,33 @@ class MainController {
     t
   }
 
+  def loadSnapChangedAndDeleteFromStock: Unit = {
+    val json: String = loadChangedFromSnap()
+    output.setValue(new Date() + "\n" + changedEndpoint + "\n" + json)
+    val script =
+      """
+         var fun = function(json) {
+           var res = [];
+           var arr = JSON.parse(json);
+           for(var index in arr) {
+             var item = arr[index];
+             res.push(item.type + "," + item.externalId);
+           }
+           return res.join("\n");
+         }
+      """
+    val value = process(script, json).toString
+    val list = value.split("\n").map { line => line.split(",") }.toList
+    val longs = list.flatMap { parts =>
+      if (parts(0) == "removed" || parts(0) == "reserved") {
+        List(parts(1).toLong)
+      } else {
+        Nil
+      }
+    }
+    deleteFromMkmStock(longs)
+  }
+
   private def handleEx(e: Exception) = {
     output.setValue(e.toString + "\n" + e.getStackTrace.take(4).mkString("\n"))
   }
@@ -181,7 +207,6 @@ class MainController {
   private def postToSnap(csv: String): String = {
     val url = baseUrl + csvEndpoint
 
-    val engine: ScriptEngine = new ScriptEngineManager().getEngineByName("nashorn")
     val script =
       """
       var fun = function(csv) {
@@ -189,12 +214,19 @@ class MainController {
         return JSON.stringify(obj)
       }
       """
-    engine.eval(script)
-    val invocable: Invocable = engine.asInstanceOf[Invocable]
-    val body = invocable.invokeFunction("fun", csv).toString
+    val body: String = process(script, csv).toString
 
     val res = new SnapConnector().call(url, "POST", getAuth, body)
     res
+  }
+
+  // https://stackoverflow.com/a/42106801/773842
+  def process(script: String, input: String): AnyRef = {
+    val engine: ScriptEngine = new ScriptEngineManager().getEngineByName("nashorn")
+    engine.eval(script)
+    val invocable: Invocable = engine.asInstanceOf[Invocable]
+    val body = invocable.invokeFunction("fun", input)
+    body
   }
 
   def loadChangedFromSnap(): String = {
@@ -211,11 +243,8 @@ class MainController {
     val mkm = new M11DedicatedApp(mkmAppToken.getValue, mkmAppSecret.getValue, mkmAccessToken.getValue, mkmAccessTokenSecret.getValue)
     if (mkm.request("https://www.mkmapi.eu/ws/v2.0/output.json" + stockEndpoint)) {
 
-      // https://stackoverflow.com/a/42106801/773842
-      val engine: ScriptEngine = new ScriptEngineManager().getEngineByName("nashorn")
-      engine.eval("var fun = function(raw) {return JSON.parse(raw).stock}")
-      val invocable: Invocable = engine.asInstanceOf[Invocable]
-      val result: String = invocable.invokeFunction("fun", mkm.responseContent).toString
+      val script = "var fun = function(raw) {return JSON.parse(raw).stock}"
+      val result: String = process(script, mkm.responseContent).toString
 
       // get string content from base64'd gzip
       val arr: Array[Byte] = Base64.getDecoder.decode(result)

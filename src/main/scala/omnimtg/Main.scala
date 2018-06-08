@@ -8,12 +8,12 @@ import javafx.application._
 import javafx.beans.binding.Binding
 import javafx.beans.property.{Property, SimpleIntegerProperty}
 import javafx.beans.value.{ChangeListener, ObservableValue}
-import javafx.geometry.{Insets, Pos}
+import javafx.geometry.Insets
 import javafx.scene._
 import javafx.scene.control.{Hyperlink, Label, Labeled, TextInputControl}
 import javafx.scene.image.Image
 import javafx.scene.input.MouseEvent
-import javafx.scene.layout.{GridPane, HBox, Region, VBox}
+import javafx.scene.layout.{GridPane, Region, VBox}
 import javafx.stage.Stage
 
 object Main extends App {
@@ -136,7 +136,7 @@ class Main extends Application {
     titleLabel.setScaleX(1.4)
     titleLabel.setScaleY(1.4)
 
-    val link = set(new Hyperlink("https://github.com/snapcardster/omni-mtg")) { x =>
+    val link = set(new Hyperlink("https://snapcardster.github.io")) { x =>
       x.setOnMouseClicked(x => handleClick(x))
     }
 
@@ -152,6 +152,7 @@ class Main extends Application {
     pane.setStyle("-fx-background-color:WHITE;-fx-padding:40;")
 
     primaryStage.setScene(new Scene(pane))
+    // for debugging: controller.loadSnapChangedAndDeleteFromStock
     primaryStage.show()
   }
 
