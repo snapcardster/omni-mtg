@@ -1,25 +1,47 @@
 package omnimtg
 
-import java.awt.datatransfer.DataFlavor
+import java.awt.datatransfer._
 import java.awt.{Desktop, Toolkit}
 import java.io._
 import java.net.URI
-import java.nio.file.{Path, Paths}
+import java.nio.file._
 import java.util
-import java.util.regex.{Matcher, Pattern}
-import java.util.zip.GZIPInputStream
+import java.util.regex._
+import java.util.zip._
 import java.util.{Base64, Date, Properties}
 
 import javafx.beans.property._
-import javafx.beans.value.{ChangeListener, ObservableValue}
-import javax.script.{Invocable, ScriptEngine, ScriptEngineManager}
+import javafx.beans.value._
+import javax.script._
 
 class MainController {
+
+  var thread: Thread = _
+  val prop: Properties = new Properties
+  val configPath: Path = Paths.get("secret.properties")
+  var aborted: BooleanProperty = new SimpleBooleanProperty(false)
+  var running: BooleanProperty = new SimpleBooleanProperty(false)
+
+  val mkmAppToken: StringProperty = newProp("mkmApp", "Enter MKM App Token")
+  val mkmAppSecret: StringProperty = newProp("mkmAppSecret", "Enter MKM App Secret")
+  val mkmAccessToken: StringProperty = newProp("mkmAccessToken", "Enter MKM Access Token")
+  val mkmAccessTokenSecret: StringProperty = newProp("mkmAccessTokenSecret", "Enter MKM Access Token Secret")
+  val snapUser: StringProperty = newProp("snapUser", "Enter Snapcardster User Id")
+  val snapToken: StringProperty = newProp("snapToken", "Enter Snapcardster Token")
+
+  val output: StringProperty = new SimpleStringProperty("Output...")
+  val interval: IntegerProperty = new SimpleIntegerProperty(3)
+
+  val baseUrl = "https://test.snapcardster.com"
+  val stockEndpoint = "/stock/file"
+  val csvEndpoint = "/importer/sellerdata/from/csv"
+  val changedEndpoint = "/marketplace/sellerdata/changed"
+
   def insertFromClip(mode: String): Unit = {
     val data = String.valueOf(Toolkit.getDefaultToolkit.getSystemClipboard.getData(DataFlavor.stringFlavor))
     mode match {
       case "mkm" =>
-        val p: Pattern = Pattern.compile(".*App token(.*)\\s+App secret(.*)\\s+Access token(.*)\\s+Access token secret(.*)\\s*.*?")
+        val p: Pattern = Pattern.compile(".*App token\\s*(.*)\\s+App secret\\s*(.*)\\s+Access token\\s*(.*)\\s+Access token secret\\s*(.*)\\s*.*?")
         val matcher: Matcher = p.matcher(data)
         if (matcher.find()) {
           mkmAppToken.setValue(matcher.group(1))
@@ -28,7 +50,7 @@ class MainController {
           mkmAccessTokenSecret.setValue(matcher.group(4))
         }
       case "snap" =>
-        val p: Pattern = Pattern.compile(".*User(.*)\\s+Token(.*)\\s*.*?")
+        val p: Pattern = Pattern.compile(".*User\\s*(.*)\\s+Token\\s*(.*)\\s*.*?")
         val matcher: Matcher = p.matcher(data)
         if (matcher.find()) {
           snapUser.setValue(matcher.group(1))
@@ -61,6 +83,12 @@ class MainController {
       updateProp("mkmAccessTokenSecret", mkmAccessTokenSecret)
       updateProp("snapUser", snapUser)
       updateProp("snapToken", snapToken)
+
+      if (prop.get("mkmAppToken") != null) {
+        output.setValue("Stored authentication information restored")
+      }
+    } catch {
+      case e: Exception => handleEx(e)
     } finally {
       str.close()
     }
@@ -68,24 +96,8 @@ class MainController {
     thread = run()
   }
 
-  var thread: Thread = null
-  val prop: Properties = new Properties
-  val configPath: Path = Paths.get("secret.properties")
-  var aborted: BooleanProperty = new SimpleBooleanProperty(false)
-  var running: BooleanProperty = new SimpleBooleanProperty(false)
-
-  val mkmAppToken: StringProperty = prop("mkmApp")
-  val mkmAppSecret: StringProperty = prop("mkmAppSecret")
-  val mkmAccessToken: StringProperty = prop("mkmAccessToken")
-  val mkmAccessTokenSecret: StringProperty = prop("mkmAccessTokenSecret")
-  val snapUser: StringProperty = prop("snapUser")
-  val snapToken: StringProperty = prop("snapToken")
-
-  val output: StringProperty = new SimpleStringProperty("Output...")
-  val interval: IntegerProperty = new SimpleIntegerProperty(60)
-
-  private def prop(name: String): SimpleStringProperty = {
-    val stringProp = new SimpleStringProperty("")
+  private def newProp(name: String, value: String): SimpleStringProperty = {
+    val stringProp = new SimpleStringProperty(value)
     val l = new ChangeListener[Any] {
       def changed(observable: ObservableValue[_], oldValue: Any, newValue: Any): Unit = {
         prop.put(name, String.valueOf(newValue))
@@ -100,6 +112,8 @@ class MainController {
     try {
       str = new FileOutputStream(configPath.toFile)
       prop.store(str, null)
+    } catch {
+      case e: Exception => handleEx(e)
     } finally {
       str.close()
     }
@@ -118,8 +132,7 @@ class MainController {
         }
       }
     } catch {
-      case e: Exception =>
-        e.printStackTrace()
+      case e: Exception => handleEx(e)
     }
   }
 
@@ -128,15 +141,16 @@ class MainController {
       while (!aborted.getValue) try {
         if (running.getValue) {
           try {
-            val csv = loadMkmStock()
+            val json: String = loadChangedFromSnap()
+            output.setValue(new Date() + "\n" + changedEndpoint + "\n" + json)
+
+            /*val csv = loadMkmStock()
             output.setValue(new Date() + "\n" + csv.split("\n").length + " lines read from mkm stock")
 
             val res: String = postToSnap(csv)
-            output.setValue(new Date() + "\n" + res)
-
+            output.setValue(new Date() + "\n" + csvEndpoint + "\n" + res)*/
           } catch {
-            case e: Exception =>
-              output.setValue(e.toString + "\n" + e.getStackTrace.take(4).mkString("\n"))
+            case e: Exception => handleEx(e)
           }
 
           val min = interval.getValue.intValue
@@ -144,14 +158,15 @@ class MainController {
           for (waitStep <- 1.to(ms / 1000)) {
             if (min == interval.getValue.intValue) {
               Thread.sleep(1000)
+            } else {
+              Thread.sleep(10)
             }
           }
         } else {
           Thread.sleep(1000)
         }
       } catch {
-        case e: Exception =>
-          e.printStackTrace()
+        case e: Exception => handleEx(e)
       }
     }
     )
@@ -159,11 +174,12 @@ class MainController {
     t
   }
 
-  private def postToSnap(csv: String) = {
-    val auth = snapUser.getValue + "," + snapToken.getValue
-    val baseUrl = "https://api.snapcardster.com"
-    val endpoint = "/importer/sellerdata/from/csv"
-    val url = baseUrl + endpoint
+  private def handleEx(e: Exception) = {
+    output.setValue(e.toString + "\n" + e.getStackTrace.take(4).mkString("\n"))
+  }
+
+  private def postToSnap(csv: String): String = {
+    val url = baseUrl + csvEndpoint
 
     val engine: ScriptEngine = new ScriptEngineManager().getEngineByName("nashorn")
     val script =
@@ -177,13 +193,23 @@ class MainController {
     val invocable: Invocable = engine.asInstanceOf[Invocable]
     val body = invocable.invokeFunction("fun", csv).toString
 
-    val res = new SnapConnector().call(url, "POST", auth, body)
+    val res = new SnapConnector().call(url, "POST", getAuth, body)
     res
   }
 
-  private def loadMkmStock(): String = {
+  def loadChangedFromSnap(): String = {
+    val url = baseUrl + changedEndpoint
+    val res = new SnapConnector().call(url, "GET", getAuth)
+    res
+  }
+
+  def getAuth: String = {
+    snapUser.getValue + "," + snapToken.getValue
+  }
+
+  def loadMkmStock(): String = {
     val mkm = new M11DedicatedApp(mkmAppToken.getValue, mkmAppSecret.getValue, mkmAccessToken.getValue, mkmAccessTokenSecret.getValue)
-    if (mkm.request("https://www.mkmapi.eu/ws/v2.0/output.json/stock/file")) {
+    if (mkm.request("https://www.mkmapi.eu/ws/v2.0/output.json" + stockEndpoint)) {
 
       // https://stackoverflow.com/a/42106801/773842
       val engine: ScriptEngine = new ScriptEngineManager().getEngineByName("nashorn")
@@ -210,11 +236,21 @@ class MainController {
       val strArr = content.toArray(new Array[String](0))
       val csv = String.join("\n", strArr: _*)
       csv
-    }
-    else {
+    } else {
       var text = "Server response: " + mkm.responseCode + " "
       if (mkm.lastError != null) text += mkm.lastError.toString
       sys.error(text)
+    }
+  }
+
+  def deleteFromMkmStock(ids: List[Long]): Unit = {
+    val mkm = new M11DedicatedApp(mkmAppToken.getValue, mkmAppSecret.getValue, mkmAccessToken.getValue, mkmAccessTokenSecret.getValue)
+    val articles = ids.map(x =>
+      s"<article>\n<idArticle>${x}</idArticle>\n<count>1</count>\n</article>"
+    ).mkString("\n")
+    val body = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<request>\n" + articles + "\n</request>"
+    if (mkm.request("https://www.mkmapi.eu/ws/v1.1/stock", "DELETE", body, "application/xml")) {
+      // TODO
     }
   }
 }

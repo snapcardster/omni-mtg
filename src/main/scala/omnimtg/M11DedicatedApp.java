@@ -82,12 +82,19 @@ public class M11DedicatedApp {
     }
 
     /**
+     * @see #request(String, String)
+     */
+    public boolean request(String requestURL) {
+        return request(requestURL, "GET", null, null);
+    }
+
+    /**
      * Perform the request to given url with OAuth 1.0a API.
      *
      * @param requestURL url to be requested. Ex. https://www.mkmapi.eu/ws/v1.1/products/island/1/1/false
      * @return true if request was successfully executed. You can retrieve the content with responseContent();
      */
-    public boolean request(String requestURL) {
+    public boolean request(String requestURL, String method, String body, String contentType) {
         _lastError = null;
         _lastCode = 0;
         _lastContent = "";
@@ -108,7 +115,7 @@ public class M11DedicatedApp {
 
             String encodedRequestURL = rawurlencode(requestURL);
 
-            String baseString = "GET&" + encodedRequestURL + "&";
+            String baseString = method + "&" + encodedRequestURL + "&";
 
             String paramString = "oauth_consumer_key=" + rawurlencode(oauth_consumer_key) + "&" +
                     "oauth_nonce=" + rawurlencode(oauth_nonce) + "&" +
@@ -142,6 +149,10 @@ public class M11DedicatedApp {
 
             HttpURLConnection connection = (HttpURLConnection) new URL(requestURL).openConnection();
             connection.addRequestProperty("Authorization", authorizationProperty);
+            connection.setRequestMethod(method);
+            if (body != null) {
+                // TODO take from SnapConnector
+            }
             connection.connect();
 
             // from here standard actions...
