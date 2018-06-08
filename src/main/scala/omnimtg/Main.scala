@@ -142,7 +142,8 @@ class MainGUI extends Application {
     pane.setStyle(paneCss)
 
     primaryStage.setScene(new Scene(pane))
-    // for debugging: controller.loadSnapChangedAndDeleteFromStock
+    // TODO for debugging only:
+    // controller.loadSnapChangedAndDeleteFromStock
     primaryStage.show()
   }
 

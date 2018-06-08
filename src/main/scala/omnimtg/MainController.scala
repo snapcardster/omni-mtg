@@ -37,7 +37,9 @@ class MainController {
   val snapCsvEndpoint: String = snapBaseUrl + "/importer/sellerdata/from/csv"
   val snapChangedEndpoint: String = snapBaseUrl + "/marketplace/sellerdata/changed"
 
-  val mkmBaseUrl: String = "https://www.mkmapi.eu/ws/v2.0"
+  val mkmBaseUrl: String =
+  //"https://www.mkmapi.eu/ws/v1.1"
+    "https://www.mkmapi.eu/ws/v2.0"
   val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
   val mkmStockFileEndpoint: String = mkmBaseUrl + "/output.json/stock/file"
 
@@ -141,17 +143,18 @@ class MainController {
   }
 
   def run(): Thread = {
-    val t = new Thread(() => {
-      while (!aborted.getValue) try {
+    val t = new Thread(() =>
+      while (!aborted.getValue)
         if (running.getValue) {
           try {
-            loadSnapChangedAndDeleteFromStock()
+            val res1 = loadSnapChangedAndDeleteFromStock()
+            output.setValue(outputPrefix() + res1)
 
             val csv = loadMkmStock()
-            output.setValue(new Date() + "\n" + csv.split("\n").length + " lines read from mkm stock")
+            output.setValue(outputPrefix() + csv.split("\n").length + " lines read from mkm stock")
 
-            val res: String = postToSnap(csv)
-            output.setValue(new Date() + "\n" + snapCsvEndpoint + "\n" + res)
+            val res = postToSnap(csv)
+            output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
           } catch {
             case e: Exception => handleEx(e)
           }
@@ -168,19 +171,19 @@ class MainController {
         } else {
           Thread.sleep(1000)
         }
-      } catch {
-        case e: Exception => handleEx(e)
-      }
-    }
     )
     t.start()
     t
   }
 
-  def loadSnapChangedAndDeleteFromStock(): Unit = {
+  def outputPrefix(): String = {
+    new Date() + "\n"
+  }
+
+  def loadSnapChangedAndDeleteFromStock(): String = {
     val json: String = loadChangedFromSnap()
 
-    output.setValue(new Date() + "\n" + snapChangedEndpoint + "\n" + json)
+    output.setValue(outputPrefix() + snapChangedEndpoint + "\n" + json)
     /* val script =
        """
           var fun = function(json) {
@@ -206,11 +209,11 @@ class MainController {
     val list = structure.asJsonArray.toArray(new Array[JsonValue](0)).map { x =>
       val obj = x.asJsonObject
       val typeValue = obj.getString("type")
-      val externalId = obj.getJsonNumber("externalId").longValue
       val info = obj.get("info")
       if (info != null) {
         typeValue -> Some(CsvFormat.parse(info.asJsonObject))
       } else {
+        val externalId = obj.getJsonNumber("externalId").longValue
         typeValue -> Some(CsvFormat(
           0, "", None, foil = false, Condition("", "", 0, ""), Language("", "", 0),
           "", None, None, signed = false, altered = false, None, Some(externalId)
@@ -227,14 +230,14 @@ class MainController {
     }
     deleteFromMkmStock(removedOrReservedItems)
 
-    val addedItems = list.flatMap { parts =>
+    /*val addedItems = list.flatMap { parts =>
       if (parts._1 == "added" || parts._1 == "changed") {
         List(parts._2.get)
       } else {
         Nil
       }
     }
-    addToMkmStock(addedItems)
+    addToMkmStock(addedItems)*/
   }
 
   def handleEx(e: Throwable, obj: Any = null): Unit = {
@@ -282,7 +285,8 @@ class MainController {
 
   def loadMkmStock(): String = {
     val mkm = getMkm
-    if (mkm.request(mkmStockFileEndpoint)) {
+    val hasOutput = true
+    if (mkm.request(mkmStockFileEndpoint, "GET", null, null, hasOutput)) {
       val obj = Json.createReader(new StringReader(mkm.responseContent)).readObject
       val result = obj.getString("stock")
 
@@ -318,15 +322,14 @@ class MainController {
     x
   }
 
-  def deleteFromMkmStock(ids: List[Long]): Unit = {
+  def deleteFromMkmStock(ids: List[Long]): String = {
     if (ids.isEmpty)
-      return
+      return ""
 
     val mkm = getMkm
 
-    val body =
-      s"""
-      <?xml version="1.0" encoding="UTF-8"?>
+    val body = // NO SPACE at beginning, this is important
+      s"""<?xml version="1.0" encoding="utf-8"?>
       <request>
       ${
         ids.map(id =>
@@ -340,8 +343,12 @@ class MainController {
       }
       </request>
       """
-    if (!mkm.request(mkmStockEndpoint, "DELETE", body, "application/xml")) {
+    val hasOutput = false
+    if (!mkm.request(mkmStockEndpoint, "DELETE", body, "application/xml", hasOutput)) {
       handleEx(mkm.lastError, ids)
+      ""
+    } else {
+      "Delete successful: " + ids
     }
   }
 
@@ -351,30 +358,36 @@ class MainController {
 
     val mkm = getMkm
 
-    val body =
-      s"""
-      <?xml version="1.0" encoding="UTF-8"?>
+    val body = // NO SPACE at beginning, this is important
+      s"""<?xml version="1.0" encoding="utf-8"?>
       <request>
       ${
-        ids.map(id =>
+        ids.map { id =>
+          val extIdInfo = id.externalId match {
+            case None => sys.error("cannot add to mkm, only update")
+            case Some(x) => "<idArticle>" + x + "</idArticle>"
+          }
+          // Cannot change qty, see:
+          // https://www.mkmapi.eu/ws/documentation/API_2.0:Stock
+          // <count>${id.qty}</count>
+          // <comments>Edited through the API</comments>
           s"""
              <article>
-               <idProduct>${id.externalId}</idProduct>
-               <idLanguage>${id.language.code}</idLanguage>
-               <comments>Inserted through the API</comments>
-               <count>${id.qty}</count>
-               <price>${id.price.get}</price>
+               $extIdInfo
                <condition>${id.condition.shortString}</condition>
                <isFoil>${id.foil}</isFoil>
                <isSigned>${id.signed}</isSigned>
                <isPlayset>false</isPlayset>
+               <idLanguage>${id.language.code}</idLanguage>
+               <price>${id.price.get}</price>
              </article>
             """
-        ).mkString("")
+        }.mkString("")
       }
       </request>
       """
-    if (!mkm.request(mkmStockEndpoint, "POST", body, "application/xml")) {
+    val hasOutput = false
+    if (!mkm.request(mkmStockEndpoint, "PUT", body, "application/xml", hasOutput)) {
       handleEx(mkm.lastError, ids)
     }
   }

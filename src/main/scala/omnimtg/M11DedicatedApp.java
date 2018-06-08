@@ -74,25 +74,18 @@ public class M11DedicatedApp {
     }
 
     /**
-     * @see #request(String, String, String, String)
-     */
-    public boolean request(String requestURL) {
-        return request(requestURL, "GET", null, null);
-    }
-
-    /**
      * Perform the request to given url with OAuth 1.0a API.
      *
      * @param requestURL url to be requested. Ex. https://www.mkmapi.eu/ws/v1.1/products/island/1/1/false
      * @return true if request was successfully executed. You can retrieve the content with responseContent();
      */
-    public boolean request(String requestURL, String method, String body, String contentType) {
+    public boolean request(String requestURL, String method, String body, String contentType, boolean hasOutput) {
         _lastError = null;
         _lastCode = 0;
         _lastContent = "";
         try {
 
-            _debug("Requesting " + requestURL);
+            _debug("Requesting " + method + " " + requestURL);
 
             String realm = requestURL;
             String oauth_version = "1.0";
@@ -118,9 +111,7 @@ public class M11DedicatedApp {
 
             baseString = baseString + rawurlencode(paramString);
 
-            String signingKey = rawurlencode(_mkmAppSecret) +
-                    "&" +
-                    rawurlencode(_mkmAccessTokenSecret);
+            String signingKey = rawurlencode(_mkmAppSecret) + "&" + rawurlencode(_mkmAccessTokenSecret);
 
             Mac mac = Mac.getInstance("HmacSHA1");
             SecretKeySpec secret = new SecretKeySpec(signingKey.getBytes(), mac.getAlgorithm());
@@ -129,8 +120,7 @@ public class M11DedicatedApp {
             String oauth_signature = DatatypeConverter.printBase64Binary(digest);    //Base64.encode(digest) ;
 
             String authorizationProperty =
-                    "OAuth " +
-                            "realm=\"" + realm + "\", " +
+                    "OAuth realm=\"" + realm + "\", " +
                             "oauth_version=\"" + oauth_version + "\", " +
                             "oauth_timestamp=\"" + oauth_timestamp + "\", " +
                             "oauth_nonce=\"" + oauth_nonce + "\", " +
@@ -144,9 +134,12 @@ public class M11DedicatedApp {
             connection.setRequestMethod(method);
             if (body != null) {
                 connection.setRequestProperty("Content-Type", contentType);
-                connection.setRequestProperty("Accept", contentType);
+
                 connection.setUseCaches(false);
+                //if (hasOutput) {
+                connection.setRequestProperty("Accept", contentType);
                 connection.setDoInput(true);
+                //}
                 connection.setDoOutput(true);
                 connection.connect();
 
@@ -162,7 +155,7 @@ public class M11DedicatedApp {
 
             _lastCode = connection.getResponseCode();
 
-            _debug("Response Code is " + _lastCode);
+            _debug("Response Code is " + _lastCode + " " + connection.getResponseMessage());
 
             if (200 == _lastCode || 401 == _lastCode || 404 == _lastCode) {
                 BufferedReader rd = new BufferedReader(new InputStreamReader(_lastCode == 200 ? connection.getInputStream() : connection.getErrorStream()));

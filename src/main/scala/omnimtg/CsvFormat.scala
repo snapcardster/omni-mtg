@@ -57,15 +57,15 @@ object CsvFormat {
     CsvFormat(
       obj.getInt("qty"),
       obj.getString("name"),
-      Option(obj.getString("editionCode")),
+      Option(obj.getString("editionCode", null)),
       obj.getBoolean("foil"),
       Condition.parse(obj.get("condition").asJsonObject),
       Language.parse(obj.get("language").asJsonObject),
       obj.getString("board"),
       Option(obj.getJsonNumber("cardId")).map(_.intValue),
-      Option(obj.getString("editionName")),
-      obj.getBoolean("signed"),
-      obj.getBoolean("altered"),
+      Option(obj.getString("editionName", null)),
+      obj.getBoolean("signed", false),
+      obj.getBoolean("altered", false),
       Option(obj.getJsonNumber("price")).map(_.doubleValue),
       Option(obj.getJsonNumber("externalId")).map(_.longValue)
     )
