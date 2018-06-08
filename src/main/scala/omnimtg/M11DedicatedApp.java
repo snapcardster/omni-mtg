@@ -131,6 +131,8 @@ public class M11DedicatedApp {
 
             HttpURLConnection connection = (HttpURLConnection) new URL(requestURL).openConnection();
             connection.addRequestProperty("Authorization", authorizationProperty);
+            _debug("Authorization: " + authorizationProperty);
+            _debug("Body: " + body);
             connection.setRequestMethod(method);
             if (body != null) {
                 connection.setRequestProperty("Content-Type", contentType);
@@ -144,7 +146,7 @@ public class M11DedicatedApp {
                 connection.connect();
 
                 byte[] outputInBytes = body.getBytes("UTF-8");
-                OutputStream os = connection.getOutputStream();
+                OutputStream os = connection.getOutputStream();git 
                 os.write(outputInBytes);
             } else {
                 connection.connect();
