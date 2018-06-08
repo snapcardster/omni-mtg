@@ -12,6 +12,7 @@ import java.util.{Base64, Date, Properties}
 
 import javafx.beans.property._
 import javafx.beans.value._
+import javax.json.{Json, JsonStructure, JsonValue}
 import javax.script._
 
 class MainController {
@@ -32,10 +33,13 @@ class MainController {
   val output: StringProperty = new SimpleStringProperty("Output...")
   val interval: IntegerProperty = new SimpleIntegerProperty(3)
 
-  val baseUrl = "https://test.snapcardster.com"
-  val stockEndpoint = "/stock/file"
-  val csvEndpoint = "/importer/sellerdata/from/csv"
-  val changedEndpoint = "/marketplace/sellerdata/changed"
+  val snapBaseUrl: String = "https://test.snapcardster.com"
+  val snapCsvEndpoint: String = snapBaseUrl + "/importer/sellerdata/from/csv"
+  val snapChangedEndpoint: String = snapBaseUrl + "/marketplace/sellerdata/changed"
+
+  val mkmBaseUrl: String = "https://www.mkmapi.eu/ws/v2.0"
+  val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
+  val mkmStockFileEndpoint: String = mkmBaseUrl + "/output.json/stock/file"
 
   def insertFromClip(mode: String): Unit = {
     val data = String.valueOf(Toolkit.getDefaultToolkit.getSystemClipboard.getData(DataFlavor.stringFlavor))
@@ -43,7 +47,7 @@ class MainController {
       case "mkm" =>
         val p: Pattern = Pattern.compile(".*App token\\s*(.*)\\s+App secret\\s*(.*)\\s+Access token\\s*(.*)\\s+Access token secret\\s*(.*)\\s*.*?")
         val matcher: Matcher = p.matcher(data)
-        if (matcher.find()) {
+        if (matcher.find) {
           mkmAppToken.setValue(matcher.group(1))
           mkmAppSecret.setValue(matcher.group(2))
           mkmAccessToken.setValue(matcher.group(3))
@@ -52,7 +56,7 @@ class MainController {
       case "snap" =>
         val p: Pattern = Pattern.compile(".*User\\s*(.*)\\s+Token\\s*(.*)\\s*.*?")
         val matcher: Matcher = p.matcher(data)
-        if (matcher.find()) {
+        if (matcher.find) {
           snapUser.setValue(matcher.group(1))
           snapToken.setValue(matcher.group(2))
         }
@@ -96,7 +100,7 @@ class MainController {
     thread = run()
   }
 
-  private def newProp(name: String, value: String): SimpleStringProperty = {
+  def newProp(name: String, value: String): SimpleStringProperty = {
     val stringProp = new SimpleStringProperty(value)
     val l = new ChangeListener[Any] {
       def changed(observable: ObservableValue[_], oldValue: Any, newValue: Any): Unit = {
@@ -141,20 +145,20 @@ class MainController {
       while (!aborted.getValue) try {
         if (running.getValue) {
           try {
-            loadSnapChangedAndDeleteFromStock
+            loadSnapChangedAndDeleteFromStock()
 
             val csv = loadMkmStock()
             output.setValue(new Date() + "\n" + csv.split("\n").length + " lines read from mkm stock")
 
             val res: String = postToSnap(csv)
-            output.setValue(new Date() + "\n" + csvEndpoint + "\n" + res)
+            output.setValue(new Date() + "\n" + snapCsvEndpoint + "\n" + res)
           } catch {
             case e: Exception => handleEx(e)
           }
 
           val min = interval.getValue.intValue
-          val ms = min * 60 * 1000
-          for (waitStep <- 1.to(ms / 1000)) {
+          val seconds = min * 60
+          for (_ <- 1.to(seconds)) {
             if (min == interval.getValue.intValue) {
               Thread.sleep(1000)
             } else {
@@ -173,50 +177,84 @@ class MainController {
     t
   }
 
-  def loadSnapChangedAndDeleteFromStock: Unit = {
+  def loadSnapChangedAndDeleteFromStock(): Unit = {
     val json: String = loadChangedFromSnap()
-    output.setValue(new Date() + "\n" + changedEndpoint + "\n" + json)
-    val script =
-      """
-         var fun = function(json) {
-           var res = [];
-           var arr = JSON.parse(json);
-           for(var index in arr) {
-             var item = arr[index];
-             res.push(item.type + "," + item.externalId);
-           }
-           return res.join("\n");
-         }
-      """
-    val value = process(script, json).toString
-    val list = value.split("\n").map { line => line.split(",") }.toList
-    val longs = list.flatMap { parts =>
-      if (parts(0) == "removed" || parts(0) == "reserved") {
-        List(parts(1).toLong)
+
+    output.setValue(new Date() + "\n" + snapChangedEndpoint + "\n" + json)
+    /* val script =
+       """
+          var fun = function(json) {
+            var res = [];
+            var arr = JSON.parse(json);
+            for(var index in arr) {
+              var item = arr[index];
+              res.push(item.type + "," + item.externalId);
+            }
+            return res.join("\n");
+          }
+       """
+     val value = process(script, json).toString
+     val list = value.split("\n").map { line => line.split(",") }.toList
+     val longs = list.flatMap { parts =>
+       if (parts(0) == "removed" || parts(0) == "reserved") {
+         List(parts(1).toLong)
+       } else {
+         Nil
+       }
+     }*/
+    val structure = fromJson(json)
+    val list = structure.asJsonArray.toArray(new Array[JsonValue](0)).map { x =>
+      val obj = x.asJsonObject
+      val typeValue = obj.getString("type")
+      val externalId = obj.getJsonNumber("externalId").longValue
+      val info = obj.get("info")
+      if (info != null) {
+        typeValue -> Some(CsvFormat.parse(info.asJsonObject))
+      } else {
+        typeValue -> Some(CsvFormat(
+          0, "", None, foil = false, Condition("", "", 0, ""), Language("", "", 0),
+          "", None, None, signed = false, altered = false, None, Some(externalId)
+        ))
+      }
+    }.toList
+
+    val removedOrReservedItems = list.flatMap { parts =>
+      if (parts._1 == "removed" || parts._1 == "reserved") {
+        List(parts._2.get.externalId.get)
       } else {
         Nil
       }
     }
-    deleteFromMkmStock(longs)
-  }
+    deleteFromMkmStock(removedOrReservedItems)
 
-  private def handleEx(e: Exception) = {
-    output.setValue(e.toString + "\n" + e.getStackTrace.take(4).mkString("\n"))
-  }
-
-  private def postToSnap(csv: String): String = {
-    val url = baseUrl + csvEndpoint
-
-    val script =
-      """
-      var fun = function(csv) {
-        var obj = { fileName: "mkmStock.csv", fileContent: csv }
-        return JSON.stringify(obj)
+    val addedItems = list.flatMap { parts =>
+      if (parts._1 == "added" || parts._1 == "changed") {
+        List(parts._2.get)
+      } else {
+        Nil
       }
-      """
-    val body: String = process(script, csv).toString
+    }
+    addToMkmStock(addedItems)
+  }
 
-    val res = new SnapConnector().call(url, "POST", getAuth, body)
+  def handleEx(e: Throwable, obj: Any = null): Unit = {
+    if (e != null) {
+      e.printStackTrace()
+      output.setValue(e.toString + "\n" + e.getStackTrace.take(4).mkString("\n") + "\n" + obj)
+    } else {
+      output.setValue("Error here: \n" + obj)
+    }
+  }
+
+  def postToSnap(csv: String): String = {
+    val writer = new StringWriter()
+    val map = new util.HashMap[String, AnyRef]
+    map.put("fileName", "mkmStock.csv")
+    map.put("fileContent", csv)
+    Json.createWriter(writer).write(Json.createObjectBuilder(map).build)
+
+    val body = writer.toString
+    val res = new SnapConnector().call(snapCsvEndpoint, "POST", getAuth, body)
     res
   }
 
@@ -230,9 +268,12 @@ class MainController {
   }
 
   def loadChangedFromSnap(): String = {
-    val url = baseUrl + changedEndpoint
-    val res = new SnapConnector().call(url, "GET", getAuth)
+    val res = new SnapConnector().call(snapChangedEndpoint, "GET", getAuth)
     res
+  }
+
+  def fromJson(str: String): JsonStructure = {
+    Json.createReader(new StringReader(str)).read
   }
 
   def getAuth: String = {
@@ -240,11 +281,10 @@ class MainController {
   }
 
   def loadMkmStock(): String = {
-    val mkm = new M11DedicatedApp(mkmAppToken.getValue, mkmAppSecret.getValue, mkmAccessToken.getValue, mkmAccessTokenSecret.getValue)
-    if (mkm.request("https://www.mkmapi.eu/ws/v2.0/output.json" + stockEndpoint)) {
-
-      val script = "var fun = function(raw) {return JSON.parse(raw).stock}"
-      val result: String = process(script, mkm.responseContent).toString
+    val mkm = getMkm
+    if (mkm.request(mkmStockFileEndpoint)) {
+      val obj = Json.createReader(new StringReader(mkm.responseContent)).readObject
+      val result = obj.getString("stock")
 
       // get string content from base64'd gzip
       val arr: Array[Byte] = Base64.getDecoder.decode(result)
@@ -272,14 +312,70 @@ class MainController {
     }
   }
 
+  def getMkm: M11DedicatedApp = {
+    val x = new M11DedicatedApp(mkmAppToken.getValue, mkmAppSecret.getValue, mkmAccessToken.getValue, mkmAccessTokenSecret.getValue)
+    x.setDebug(true)
+    x
+  }
+
   def deleteFromMkmStock(ids: List[Long]): Unit = {
-    val mkm = new M11DedicatedApp(mkmAppToken.getValue, mkmAppSecret.getValue, mkmAccessToken.getValue, mkmAccessTokenSecret.getValue)
-    val articles = ids.map(x =>
-      s"<article>\n<idArticle>${x}</idArticle>\n<count>1</count>\n</article>"
-    ).mkString("\n")
-    val body = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<request>\n" + articles + "\n</request>"
-    if (mkm.request("https://www.mkmapi.eu/ws/v1.1/stock", "DELETE", body, "application/xml")) {
-      // TODO
+    if (ids.isEmpty)
+      return
+
+    val mkm = getMkm
+
+    val body =
+      s"""
+      <?xml version="1.0" encoding="UTF-8"?>
+      <request>
+      ${
+        ids.map(id =>
+          s"""
+            <article>
+              <idArticle>$id</idArticle>
+              <count>1</count>
+            </article>
+            """
+        ).mkString("")
+      }
+      </request>
+      """
+    if (!mkm.request(mkmStockEndpoint, "DELETE", body, "application/xml")) {
+      handleEx(mkm.lastError, ids)
+    }
+  }
+
+  def addToMkmStock(ids: List[CsvFormat]): Unit = {
+    if (ids.isEmpty)
+      return
+
+    val mkm = getMkm
+
+    val body =
+      s"""
+      <?xml version="1.0" encoding="UTF-8"?>
+      <request>
+      ${
+        ids.map(id =>
+          s"""
+             <article>
+               <idProduct>${id.externalId}</idProduct>
+               <idLanguage>${id.language.code}</idLanguage>
+               <comments>Inserted through the API</comments>
+               <count>${id.qty}</count>
+               <price>${id.price.get}</price>
+               <condition>${id.condition.shortString}</condition>
+               <isFoil>${id.foil}</isFoil>
+               <isSigned>${id.signed}</isSigned>
+               <isPlayset>false</isPlayset>
+             </article>
+            """
+        ).mkString("")
+      }
+      </request>
+      """
+    if (!mkm.request(mkmStockEndpoint, "POST", body, "application/xml")) {
+      handleEx(mkm.lastError, ids)
     }
   }
 }

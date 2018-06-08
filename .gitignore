@@ -10,8 +10,8 @@ build
 .classpath
 .project
 .settings
-org.scala-ide.sdt.core/META-INF/MANIFEST.MF
-org.scala-ide.sdt.update-site/site.xml`
+org.scala-ide.sdt.core
+org.scala-ide.sdt.update-site
 
 .DS_Store
 
@@ -19,21 +19,23 @@ tags
 .*.swp
 .*.swo
 
-dist/*
+app
+dist
 target/.history
 target/streams
+target/test-reports
 target/scala-2.12/classes
 target/scala-2.12/resolution-cache
 target/scala-2.12/test-classes
-lib_managed/
-src_managed/
-project/boot/
-project/target/
-project/plugins/project/
+lib_managed
+src_managed
+project/boot
+project/target
+project/plugins/project
+project/project
 .history
 .cache
-.lib/
+.lib
 
-### Scala ###
 *.class
 *.log

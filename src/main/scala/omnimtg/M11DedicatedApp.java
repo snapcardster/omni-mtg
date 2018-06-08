@@ -29,11 +29,6 @@ public class M11DedicatedApp {
 
     /**
      * Constructor. Fill parameters according to given MKM profile app parameters.
-     *
-     * @param appToken
-     * @param appSecret
-     * @param accessToken
-     * @param accessSecret
      */
     public M11DedicatedApp(String appToken, String appSecret, String accessToken, String accessSecret) {
         _mkmAppToken = appToken;
@@ -56,10 +51,6 @@ public class M11DedicatedApp {
 
     /**
      * Encoding function. To avoid deprecated version, the encoding used is UTF-8.
-     *
-     * @param str
-     * @return
-     * @throws UnsupportedEncodingException
      */
     private String rawurlencode(String str) throws UnsupportedEncodingException {
         return URLEncoder.encode(str, "UTF-8");
@@ -83,7 +74,7 @@ public class M11DedicatedApp {
     }
 
     /**
-     * @see #request(String, String)
+     * @see #request(String, String, String, String)
      */
     public boolean request(String requestURL) {
         return request(requestURL, "GET", null, null);
@@ -152,8 +143,8 @@ public class M11DedicatedApp {
             connection.addRequestProperty("Authorization", authorizationProperty);
             connection.setRequestMethod(method);
             if (body != null) {
-                connection.setRequestProperty("Content-Type", "application/xml");
-                connection.setRequestProperty("Accept", "application/xml");
+                connection.setRequestProperty("Content-Type", contentType);
+                connection.setRequestProperty("Accept", contentType);
                 connection.setUseCaches(false);
                 connection.setDoInput(true);
                 connection.setDoOutput(true);
@@ -175,7 +166,7 @@ public class M11DedicatedApp {
 
             if (200 == _lastCode || 401 == _lastCode || 404 == _lastCode) {
                 BufferedReader rd = new BufferedReader(new InputStreamReader(_lastCode == 200 ? connection.getInputStream() : connection.getErrorStream()));
-                StringBuffer sb = new StringBuffer();
+                StringBuilder sb = new StringBuilder();
                 String line;
                 while ((line = rd.readLine()) != null) {
                     sb.append(line);
@@ -196,8 +187,6 @@ public class M11DedicatedApp {
 
     /**
      * Get response code from last request.
-     *
-     * @return
      */
     public int responseCode() {
         return _lastCode;
@@ -205,8 +194,6 @@ public class M11DedicatedApp {
 
     /**
      * Get response content from last request.
-     *
-     * @return
      */
     public String responseContent() {
         return _lastContent;
