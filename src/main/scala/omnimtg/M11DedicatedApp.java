@@ -146,7 +146,7 @@ public class M11DedicatedApp {
                 connection.connect();
 
                 byte[] outputInBytes = body.getBytes("UTF-8");
-                OutputStream os = connection.getOutputStream();git 
+                OutputStream os = connection.getOutputStream();
                 os.write(outputInBytes);
             } else {
                 connection.connect();
