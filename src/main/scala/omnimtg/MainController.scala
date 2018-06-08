@@ -73,7 +73,7 @@ class MainController {
     }
   }
 
-  def start(): Unit = {
+  def readProperties = {
     if (!configPath.toFile.exists) {
       configPath.toFile.createNewFile
     }
@@ -98,6 +98,10 @@ class MainController {
     } finally {
       str.close()
     }
+  }
+
+  def start(): Unit = {
+    readProperties
 
     thread = run()
   }
