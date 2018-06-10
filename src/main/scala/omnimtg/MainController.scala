@@ -13,9 +13,16 @@ import java.util.{Base64, Date, Properties}
 import javafx.beans.property._
 import javafx.beans.value._
 import javax.json.{Json, JsonStructure, JsonValue}
-import javax.script._
 
 class MainController {
+  // TODO: change back to test after test
+  val snapBaseUrl: String = "http://localhost:9000" //"https://test.snapcardster.com"
+  val snapCsvEndpoint: String = snapBaseUrl + "/importer/sellerdata/from/csv"
+  val snapChangedEndpoint: String = snapBaseUrl + "/marketplace/sellerdata/changed"
+
+  val mkmBaseUrl: String = "https://www.mkmapi.eu/ws/v2.0"
+  val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
+  val mkmStockFileEndpoint: String = mkmBaseUrl + "/output.json/stock/file"
 
   var thread: Thread = _
   val prop: Properties = new Properties
@@ -32,16 +39,6 @@ class MainController {
 
   val output: StringProperty = new SimpleStringProperty("Output...")
   val interval: IntegerProperty = new SimpleIntegerProperty(3)
-
-  val snapBaseUrl: String = "https://test.snapcardster.com"
-  val snapCsvEndpoint: String = snapBaseUrl + "/importer/sellerdata/from/csv"
-  val snapChangedEndpoint: String = snapBaseUrl + "/marketplace/sellerdata/changed"
-
-  val mkmBaseUrl: String =
-  //"https://www.mkmapi.eu/ws/v1.1"
-    "https://www.mkmapi.eu/ws/v2.0"
-  val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
-  val mkmStockFileEndpoint: String = mkmBaseUrl + "/output.json/stock/file"
 
   def insertFromClip(mode: String): Unit = {
     val data = String.valueOf(Toolkit.getDefaultToolkit.getSystemClipboard.getData(DataFlavor.stringFlavor))
@@ -73,7 +70,7 @@ class MainController {
     }
   }
 
-  def readProperties = {
+  def readProperties: Unit = {
     if (!configPath.toFile.exists) {
       configPath.toFile.createNewFile
     }
@@ -184,6 +181,10 @@ class MainController {
     new Date() + "\n"
   }
 
+  def asJsonArray(structure: JsonStructure): Array[JsonValue] = {
+    structure.asJsonArray.toArray(new Array[JsonValue](0))
+  }
+
   def loadSnapChangedAndDeleteFromStock(): String = {
     val json: String = loadChangedFromSnap()
 
@@ -210,7 +211,7 @@ class MainController {
        }
      }*/
     val structure = fromJson(json)
-    val list = structure.asJsonArray.toArray(new Array[JsonValue](0)).map { x =>
+    val list = asJsonArray(structure).map { x =>
       val obj = x.asJsonObject
       val typeValue = obj.getString("type")
       val info = obj.get("info")
@@ -254,24 +255,30 @@ class MainController {
   }
 
   def postToSnap(csv: String): String = {
-    val writer = new StringWriter()
-    val map = new util.HashMap[String, AnyRef]
-    map.put("fileName", "mkmStock.csv")
-    map.put("fileContent", csv)
-    Json.createWriter(writer).write(Json.createObjectBuilder(map).build)
+    val map = Map("fileName" -> "mkmStock.csv", "fileContent" -> csv)
+    val body = jsonFromMap(map)
 
-    val body = writer.toString
     val res = new SnapConnector().call(snapCsvEndpoint, "POST", getAuth, body)
     res
   }
 
   // https://stackoverflow.com/a/42106801/773842
-  def process(script: String, input: String): AnyRef = {
+  /* def process(script: String, input: String): AnyRef = {
     val engine: ScriptEngine = new ScriptEngineManager().getEngineByName("nashorn")
     engine.eval(script)
     val invocable: Invocable = engine.asInstanceOf[Invocable]
     val body = invocable.invokeFunction("fun", input)
     body
+  } */
+
+  def jsonFromMap(map: Map[String, Any]): String = {
+    val writer = new StringWriter()
+    val hashMap = new util.HashMap[String, AnyRef]
+    for ((k, v) <- map) {
+      hashMap.put(k, v.asInstanceOf[AnyRef])
+    }
+    Json.createWriter(writer).write(Json.createObjectBuilder(hashMap).build)
+    writer.toString
   }
 
   def loadChangedFromSnap(): String = {
@@ -280,7 +287,12 @@ class MainController {
   }
 
   def fromJson(str: String): JsonStructure = {
-    Json.createReader(new StringReader(str)).read
+    try {
+      Json.createReader(new StringReader(str)).read
+    } catch {
+      case e: Exception =>
+        sys.error("Error parsing JSON " + e + "\nJSON: " + str)
+    }
   }
 
   def getAuth: String = {
@@ -367,10 +379,13 @@ class MainController {
       <request>
       ${
         ids.map { id =>
-          val extIdInfo = id.externalId match {
-            case None => sys.error("cannot add to mkm, only update")
-            case Some(x) => "<idArticle>" + x + "</idArticle>"
-          }
+          val extIdInfo = "" // only insert ist supported right now, not update
+
+          // id.externalId match {
+          //  case None => sys.error("cannot add to mkm, only update")
+          //  case Some(x) => "<idArticle>" + x + "</idArticle>"
+          // }
+
           // Cannot change qty, see:
           // https://www.mkmapi.eu/ws/documentation/API_2.0:Stock
           // <count>${id.qty}</count>
@@ -386,12 +401,13 @@ class MainController {
                <price>${id.price.get}</price>
              </article>
             """
+          // TODO comment field from csv
         }.mkString("")
       }
       </request>
       """
     val hasOutput = false
-    if (!mkm.request(mkmStockEndpoint, "PUT", body, "application/xml", hasOutput)) {
+    if (!mkm.request(mkmStockEndpoint, "POST", body, "application/xml", hasOutput)) {
       handleEx(mkm.lastError, ids)
     }
   }
