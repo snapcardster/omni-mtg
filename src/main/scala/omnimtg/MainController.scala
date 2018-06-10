@@ -70,7 +70,7 @@ class MainController {
     }
   }
 
-  def readProperties: Unit = {
+  def readProperties(): Unit = {
     if (!configPath.toFile.exists) {
       configPath.toFile.createNewFile
     }
@@ -98,7 +98,7 @@ class MainController {
   }
 
   def start(): Unit = {
-    readProperties
+    readProperties()
 
     thread = run()
   }
@@ -362,15 +362,15 @@ class MainController {
     val hasOutput = false
     if (!mkm.request(mkmStockEndpoint, "DELETE", body, "application/xml", hasOutput)) {
       handleEx(mkm.lastError, ids)
-      ""
+      getErrorString(mkm)
     } else {
-      "Delete successful: " + ids
+      "Delete successful: " + ids + "\n" + mkm.responseContent
     }
   }
 
-  def addToMkmStock(csvs: List[CsvFormat]): Unit = {
+  def addToMkmStock(csvs: List[CsvFormat]): String = {
     if (csvs.isEmpty)
-      return
+      return ""
 
     val mkm = getMkm
 
@@ -379,8 +379,8 @@ class MainController {
       <request>
       ${
         csvs.map { csv =>
-          val extIdInfo = "" // only insert ist supported right now, not update
-
+          // only insert ist supported right now, not update
+          //val extIdInfo = ""
           // id.externalId match {
           //  case None => sys.error("cannot add to mkm, only update")
           //  case Some(x) => "<idArticle>" + x + "</idArticle>"
@@ -388,15 +388,14 @@ class MainController {
 
           // Cannot change qty, see:
           // https://www.mkmapi.eu/ws/documentation/API_2.0:Stock
-          // <count>${id.qty}</count>
-          // <comments>Edited through the API</comments>
-          val csvLine = csv.meta.split(";")
+
+          val csvLine = csv.meta.replace("\"", "").split(";")
           // TODO: Apache CSV?
-          val prodId = csvLine(0).replace("\"", "")
-          val comment = csvLine(0).replace("\"", "")
+          val prodId = csvLine(1)
+          val comment = csvLine(13)
+          // For post, all information must be present as well as count=1
           s"""
              <article>
-               $extIdInfo
                <idProduct>$prodId</idProduct>
                <condition>${csv.condition.shortString}</condition>
                <isFoil>${csv.foil}</isFoil>
@@ -408,7 +407,6 @@ class MainController {
                <count>1</count>
              </article>
             """
-          // TODO comment field from csv
         }.mkString("")
       }
       </request>
@@ -416,6 +414,13 @@ class MainController {
     val hasOutput = false
     if (!mkm.request(mkmStockEndpoint, "POST", body, "application/xml", hasOutput)) {
       handleEx(mkm.lastError, csvs)
+      getErrorString(mkm)
+    } else {
+      mkm.responseContent
     }
+  }
+
+  def getErrorString(mkm: M11DedicatedApp): String = {
+    "Returned " + mkm.responseCode + ": " + mkm.lastError
   }
 }

@@ -6,7 +6,7 @@ import org.scalatest._
 class MKMSpec extends FlatSpec with Matchers {
   "MKM API" should "stock get and delete really deletes" in {
     val controller = new MainController
-    controller.readProperties
+    controller.readProperties()
     val csv = controller.loadMkmStock()
     csv.shouldNot(equal(""))
 

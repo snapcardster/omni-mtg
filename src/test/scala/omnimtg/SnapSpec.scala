@@ -5,7 +5,7 @@ import org.scalatest._
 class SnapSpec extends FlatSpec with Matchers {
   "Snap API" should "return changes" in {
     val controller = new MainController
-    controller.readProperties
+    controller.readProperties()
 
     val res = controller.loadChangedFromSnap()
 

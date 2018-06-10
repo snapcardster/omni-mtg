@@ -26,10 +26,10 @@ class SyncSpec extends FlatSpec with Matchers {
     changed shouldEqual "[]"
   }*/
 
-  "Snap API" should "return if a change was made" in {
+  "Sync Logic" should "work in the full process (see comments)" in {
     implicit val connector: SnapConnector = new SnapConnector
     implicit val controller: MainController = new MainController
-    controller.readProperties
+    controller.readProperties()
 
     // check changes should be empty
 
@@ -62,7 +62,7 @@ class SyncSpec extends FlatSpec with Matchers {
     changeType shouldEqual "reserved"
 
     // then deleting this item at mkm
-    val status = controller.deleteFromMkmStock(List(collItemExtId))
+    var status = controller.deleteFromMkmStock(List(collItemExtId))
     println(status)
 
     // should really delete it
@@ -107,10 +107,18 @@ class SyncSpec extends FlatSpec with Matchers {
     val info = changeItem.getJsonObject("info")
     val csvItemToAdd = CsvFormat.parse(info)
 
-    controller.addToMkmStock(List(csvItemToAdd))
+    // check old csv where item was removed
+    csv shouldNot contain(csvItemToAdd.name)
+
+    status = controller.addToMkmStock(List(csvItemToAdd))
+    println(status)
+
+    // don't know why but getting the stock immediately doesn't reflect the add, so just wait some sec
+    val sec = 12
+    Thread.sleep(sec * 1000)
 
     csv = controller.loadMkmStock()
-    csv should contain(collItemExtId.toString)
+    csv.contains(csvItemToAdd.name) shouldEqual true
   }
 
   def findChangeItem(arr: Array[JsonValue], collItemExtId: Long): JsonObject = {
