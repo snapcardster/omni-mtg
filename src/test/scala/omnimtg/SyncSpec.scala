@@ -62,7 +62,8 @@ class SyncSpec extends FlatSpec with Matchers {
     changeType shouldEqual "reserved"
 
     // then deleting this item at mkm
-    var status = controller.deleteFromMkmStock(List(collItemExtId))
+    val idsToDelete = arr.map(_.asJsonObject).filter(x => x.getString("type") == "reserved").map(x => getLong(x.asJsonObject, "externalId")).toList
+    var status = controller.deleteFromMkmStock(idsToDelete)
     println(status)
 
     // should really delete it
@@ -92,7 +93,6 @@ class SyncSpec extends FlatSpec with Matchers {
     println(res)
     res shouldNot equal("")
 
-
     // show now let sync considered the card to-be-added again which is returned from sync route
     res = controller.loadChangedFromSnap()
     arr = controller.asJsonArray(controller.fromJson(res))
@@ -104,13 +104,15 @@ class SyncSpec extends FlatSpec with Matchers {
     changeType = changeItem.getString("type")
     changeType shouldEqual "added"
 
+    val csvJsonItems = arr.toList.map(_.asJsonObject).filter(_.getString("type") == "added").map(_.getJsonObject("info"))
+
     val info = changeItem.getJsonObject("info")
     val csvItemToAdd = CsvFormat.parse(info)
 
     // check old csv where item was removed
     csv shouldNot contain(csvItemToAdd.name)
 
-    status = controller.addToMkmStock(List(csvItemToAdd))
+    status = controller.addToMkmStock(csvJsonItems.map(x => CsvFormat.parse(x)))
     println(status)
 
     // don't know why but getting the stock immediately doesn't reflect the add, so just wait some sec

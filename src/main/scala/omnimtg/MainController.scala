@@ -235,14 +235,14 @@ class MainController {
     }
     deleteFromMkmStock(removedOrReservedItems)
 
-    /*val addedItems = list.flatMap { parts =>
+    val addedItems = list.flatMap { parts =>
       if (parts._1 == "added" || parts._1 == "changed") {
         List(parts._2.get)
       } else {
         Nil
       }
     }
-    addToMkmStock(addedItems)*/
+    addToMkmStock(addedItems)
   }
 
   def handleEx(e: Throwable, obj: Any = null): Unit = {
