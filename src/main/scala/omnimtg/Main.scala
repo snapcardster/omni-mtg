@@ -22,6 +22,8 @@ object Main {
 }
 
 class MainGUI extends Application {
+  val title = "Omni MTG Sync Tool, Version 2016-06-10"
+
   val controller: MainController = new MainController
   val buttonCss = "-jfx-button-type: RAISED; -fx-background-color: blue; -fx-text-fill: white;"
   val button2Css = "-jfx-button-type: FLAT; -fx-background-color: green; -fx-text-fill: white;"
@@ -74,7 +76,6 @@ class MainGUI extends Application {
       x.setDisable(true)
     }, 1, 3)
 
-    val title = "Omni MTG Sync Tool"
     val main = set(new VBox(
       set(new JFXButton("🔄 Start Sync"))(x => {
         x.setStyle(buttonCss)

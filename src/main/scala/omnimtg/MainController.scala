@@ -368,8 +368,8 @@ class MainController {
     }
   }
 
-  def addToMkmStock(ids: List[CsvFormat]): Unit = {
-    if (ids.isEmpty)
+  def addToMkmStock(csvs: List[CsvFormat]): Unit = {
+    if (csvs.isEmpty)
       return
 
     val mkm = getMkm
@@ -378,7 +378,7 @@ class MainController {
       s"""<?xml version="1.0" encoding="utf-8"?>
       <request>
       ${
-        ids.map { id =>
+        csvs.map { csv =>
           val extIdInfo = "" // only insert ist supported right now, not update
 
           // id.externalId match {
@@ -390,15 +390,22 @@ class MainController {
           // https://www.mkmapi.eu/ws/documentation/API_2.0:Stock
           // <count>${id.qty}</count>
           // <comments>Edited through the API</comments>
+          val csvLine = csv.meta.split(";")
+          // TODO: Apache CSV?
+          val prodId = csvLine(0).replace("\"", "")
+          val comment = csvLine(0).replace("\"", "")
           s"""
              <article>
                $extIdInfo
-               <condition>${id.condition.shortString}</condition>
-               <isFoil>${id.foil}</isFoil>
-               <isSigned>${id.signed}</isSigned>
+               <idProduct>$prodId</idProduct>
+               <condition>${csv.condition.shortString}</condition>
+               <isFoil>${csv.foil}</isFoil>
+               <isSigned>${csv.signed}</isSigned>
                <isPlayset>false</isPlayset>
-               <idLanguage>${id.language.code}</idLanguage>
-               <price>${id.price.get}</price>
+               <idLanguage>${csv.language.code}</idLanguage>
+               <price>${csv.price.get}</price>
+               <comment>$comment</comment>
+               <count>1</count>
              </article>
             """
           // TODO comment field from csv
@@ -408,7 +415,7 @@ class MainController {
       """
     val hasOutput = false
     if (!mkm.request(mkmStockEndpoint, "POST", body, "application/xml", hasOutput)) {
-      handleEx(mkm.lastError, ids)
+      handleEx(mkm.lastError, csvs)
     }
   }
 }
