@@ -13,6 +13,10 @@ import java.util.{Base64, Date, Properties}
 import javafx.beans.property._
 import javafx.beans.value._
 import javax.json.{Json, JsonStructure, JsonValue}
+import javax.xml.parsers.{DocumentBuilder, DocumentBuilderFactory}
+import org.w3c.dom.{Document, Node, NodeList}
+
+import scala.collection.immutable
 
 class MainController {
   // TODO: change back to test after test
@@ -37,8 +41,8 @@ class MainController {
   val snapUser: StringProperty = newProp("snapUser", "Enter Snapcardster User Id")
   val snapToken: StringProperty = newProp("snapToken", "Enter Snapcardster Token")
 
-  val output: StringProperty = new SimpleStringProperty("Output...")
-  val interval: IntegerProperty = new SimpleIntegerProperty(3)
+  val output: StringProperty = new SimpleStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
+  val interval: IntegerProperty = new SimpleIntegerProperty(180)
 
   def insertFromClip(mode: String): Unit = {
     val data = String.valueOf(Toolkit.getDefaultToolkit.getSystemClipboard.getData(DataFlavor.stringFlavor))
@@ -160,10 +164,9 @@ class MainController {
             case e: Exception => handleEx(e)
           }
 
-          val min = interval.getValue.intValue
-          val seconds = min * 60
+          val seconds = interval.getValue.intValue
           for (_ <- 1.to(seconds)) {
-            if (min == interval.getValue.intValue) {
+            if (seconds == interval.getValue.intValue) { // abort wait if changed during wait
               Thread.sleep(1000)
             } else {
               Thread.sleep(10)
@@ -189,68 +192,79 @@ class MainController {
     val json: String = loadChangedFromSnap()
 
     output.setValue(outputPrefix() + snapChangedEndpoint + "\n" + json)
-    /* val script =
-       """
-          var fun = function(json) {
-            var res = [];
-            var arr = JSON.parse(json);
-            for(var index in arr) {
-              var item = arr[index];
-              res.push(item.type + "," + item.externalId);
-            }
-            return res.join("\n");
-          }
-       """
-     val value = process(script, json).toString
-     val list = value.split("\n").map { line => line.split(",") }.toList
-     val longs = list.flatMap { parts =>
-       if (parts(0) == "removed" || parts(0) == "reserved") {
-         List(parts(1).toLong)
-       } else {
-         Nil
-       }
-     }*/
     val structure = fromJson(json)
     val list = asJsonArray(structure).map { x =>
       val obj = x.asJsonObject
       val typeValue = obj.getString("type")
       val info = obj.get("info")
+      val collectionId = obj.getJsonNumber("collectionId").longValue
+      val externalId = obj.getJsonNumber("externalId").longValue
       if (info != null) {
-        typeValue -> Some(CsvFormat.parse(info.asJsonObject))
+        SellerDataChanged(
+          typeValue,
+          Some(externalId),
+          Some(collectionId),
+          Some(CsvFormat.parse(info.asJsonObject))
+        )
       } else {
-        val externalId = obj.getJsonNumber("externalId").longValue
-        typeValue -> Some(CsvFormat(
-          0, "", None, foil = false, Condition("", "", 0, ""), Language("", "", 0),
-          "", None, None, signed = false, altered = false, None, Some(externalId)
-        ))
+        SellerDataChanged(typeValue, Some(externalId), Some(collectionId), None)
       }
     }.toList
 
     val removedOrReservedItems = list.flatMap { parts =>
-      if (parts._1 == "removed" || parts._1 == "reserved") {
-        List(parts._2.get.externalId.get)
+      if (parts.`type` == "removed" || parts.`type` == "reserved") {
+        List(parts.externalId.get)
       } else {
         Nil
       }
     }
-    deleteFromMkmStock(removedOrReservedItems)
+
+    val resDel = deleteFromMkmStock(removedOrReservedItems)
+    output.setValue(resDel)
 
     val addedItems = list.flatMap { parts =>
-      if (parts._1 == "added" || parts._1 == "changed") {
-        List(parts._2.get)
+      if (parts.`type` == "added" || parts.`type` == "changed") {
+        List(parts.info.get)
       } else {
         Nil
       }
     }
-    addToMkmStock(addedItems)
+    val resAdd = addToMkmStock(addedItems)
+    val resSync = resDel + "\n" + resAdd
+    output.setValue(resSync)
+
+    // TODO post snapChangedEndpoint data:
+    val items = List(Map(
+      "collectionId" -> 42,
+      "successful" -> false,
+      "info" -> "mkm error"
+    ), Map(
+      "collectionId" -> 512839,
+      "successful" -> true
+    ))
+    val body = "[" + items.map(x => jsonFromMap(x)).mkString(", ") + "]"
+    // val body = ""
+    val res = new SnapConnector().call(snapChangedEndpoint, "POST", getAuth, body)
+
+    // output.setValue(res)
+    // res
+    resSync
   }
 
   def handleEx(e: Throwable, obj: Any = null): Unit = {
     if (e != null) {
       e.printStackTrace()
-      output.setValue(e.toString + "\n" + e.getStackTrace.take(4).mkString("\n") + "\n" + obj)
+      output.setValue(errorText(e) + "\n" + obj)
     } else {
       output.setValue("Error here: \n" + obj)
+    }
+  }
+
+  def errorText(e: Throwable): String = {
+    if (e != null) {
+      e.toString + "\n" + e.getStackTrace.take(4).mkString("\n")
+    } else {
+      "null"
     }
   }
 
@@ -364,6 +378,7 @@ class MainController {
       handleEx(mkm.lastError, ids)
       getErrorString(mkm)
     } else {
+      // TODO: Parse xml, then return Confirmation List
       val notOk = mkm.responseContent.contains("<success>false</success>")
       if (notOk)
         sys.error("Delete partially not ok: " + mkm.responseContent)
@@ -419,6 +434,10 @@ class MainController {
       handleEx(mkm.lastError, csvs)
       getErrorString(mkm)
     } else {
+      // TODO: Parse xml, then return Confirmation List
+      val doc = getXml(mkm.responseContent)
+      val nodeList = xmlList(doc.getElementsByTagName("response"))
+
       val notOk = mkm.responseContent.contains("<success>false</success>")
       if (notOk)
         sys.error("Add partially not ok: " + mkm.responseContent)
@@ -426,7 +445,29 @@ class MainController {
     }
   }
 
+  def xmlList(list: NodeList): List[Node] = {
+    0.until(list.getLength).map(x => list.item(x)).toList
+  }
+
+  /**
+    * https://www.mkyong.com/java/how-to-read-xml-file-in-java-dom-parser/
+    * https://www.owasp.org/index.php/Injection_Prevention_Cheat_Sheet_in_Java#XML:_External_Entity_attack
+    */
+  def getXml(res: String) = {
+    val dbFactory = DocumentBuilderFactory.newInstance
+    dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+    dbFactory.setFeature("http://xml.org/sax/features/external-general-entities", false)
+    dbFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+    dbFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+    dbFactory.setXIncludeAware(false)
+    dbFactory.setExpandEntityReferences(false)
+    val dBuilder = dbFactory.newDocumentBuilder
+    val doc = dBuilder.parse(new ByteArrayInputStream(res.getBytes))
+    doc.getDocumentElement.normalize
+    doc
+  }
+
   def getErrorString(mkm: M11DedicatedApp): String = {
-    "Returned " + mkm.responseCode + ": " + mkm.lastError
+    s"""{"error": s"Returned HTTP code ${mkm.responseCode}, exception: ${errorText(mkm.lastError)}"}"""
   }
 }

@@ -2,6 +2,8 @@ package omnimtg
 
 import javax.json.JsonObject
 
+import scala.util.Try
+
 case class Condition(
                       longString: String,
                       shortString: String,
@@ -36,6 +38,24 @@ object Language {
   }
 }
 
+case class SellerDataChanged(
+                              `type`: String,
+                              externalId: Option[Long],
+                              collectionId: Option[Long],
+                              info: Option[CsvFormat]
+                            )
+
+object SellerDataChanged {
+  def parse(obj: JsonObject): SellerDataChanged = {
+    SellerDataChanged(
+      obj.getString("type"),
+      Option(obj.getJsonNumber("externalId")).map(_.longValue),
+      Option(obj.getJsonNumber("collectionId")).map(_.longValue),
+      Option(obj.get("info")).map(x => CsvFormat.parse(x.asJsonObject))
+    )
+  }
+}
+
 case class CsvFormat(
                       qty: Int,
                       name: String,
@@ -49,7 +69,8 @@ case class CsvFormat(
                       signed: Boolean,
                       altered: Boolean,
                       price: Option[Double],
-                      externalId: Option[Long]
+                      externalId: Option[Long],
+                      collectionId: Option[Long]
                     )
 
 object CsvFormat {
@@ -67,7 +88,8 @@ object CsvFormat {
       obj.getBoolean("signed", false),
       obj.getBoolean("altered", false),
       Option(obj.getJsonNumber("price")).map(_.doubleValue),
-      Option(obj.getJsonNumber("externalId")).map(_.longValue)
+      Option(obj.getJsonNumber("externalId")).map(_.longValue),
+      None
     )
   }
 }

@@ -22,7 +22,7 @@ object Main {
 }
 
 class MainGUI extends Application {
-  val title = "Omni MTG Sync Tool, Version 2016-06-10"
+  val title = "Omni MTG Sync Tool, v2016-06-10"
 
   val controller: MainController = new MainController
   val buttonCss = "-jfx-button-type: RAISED; -fx-background-color: blue; -fx-text-fill: white;"
@@ -52,7 +52,8 @@ class MainGUI extends Application {
   override def start(primaryStage: Stage): Unit = {
     controller.start()
 
-    primaryStage.setOnCloseRequest(_ => {
+    primaryStage.setOnCloseRequest(x => {
+      // x.consume()
       controller.output.setValue("Closing...")
       controller.aborted.setValue(true)
       controller.thread.interrupt()
@@ -62,17 +63,17 @@ class MainGUI extends Application {
     grid.setHgap(20.0)
     grid.add(new Label("🎚 Sync Options"), 0, 0)
     grid.add(
-      set(new JFXSlider(1, 1000, controller.interval.getValue.doubleValue))(linkTo(_, controller.interval)),
+      set(new JFXSlider(20, 43600, controller.interval.getValue.doubleValue))(linkTo(_, controller.interval)),
       0, 1, 2, 1
     )
-    grid.add(new Label("🕓 Sync interval in minutes"), 0, 2)
-    grid.add(set(new JFXTextField()) { x =>
-      linkTo(x, controller.interval.asString())
+    grid.add(new Label("🕓 Sync interval in seconds"), 0, 2)
+    grid.add(set(new JFXTextField) { x =>
+      linkTo(x, controller.interval.asString)
       x.setDisable(true)
     }, 1, 2)
     grid.add(new Label("📆 Resulting number of syncs per day"), 0, 3)
-    grid.add(set(new JFXTextField()) { x =>
-      linkTo(x, new SimpleIntegerProperty(1440).divide(controller.interval).asString())
+    grid.add(set(new JFXTextField) { x =>
+      linkTo(x, new SimpleIntegerProperty(1440 * 60).divide(controller.interval).asString())
       x.setDisable(true)
     }, 1, 3)
 

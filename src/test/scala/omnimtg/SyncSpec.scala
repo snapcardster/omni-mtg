@@ -61,7 +61,7 @@ class SyncSpec extends FlatSpec with Matchers {
     // get collection for lookup
     url = controller.snapBaseUrl + "/collection?priceSource=ck"
     res = connector.call(url, "GET", sellerAuth)
-    res shouldEqual ("[]")
+    res shouldEqual "[]"
 
     var csv = controller.loadMkmStock
     println("csv with " + csv.count(_ == '\n') + " lines read from mkm api")
