@@ -364,6 +364,9 @@ class MainController {
       handleEx(mkm.lastError, ids)
       getErrorString(mkm)
     } else {
+      val notOk = mkm.responseContent.contains("<success>false</success>")
+      if (notOk)
+        sys.error("Delete partially not ok: " + mkm.responseContent)
       "Delete successful: " + ids + "\n" + mkm.responseContent
     }
   }
@@ -403,7 +406,7 @@ class MainController {
                <isPlayset>false</isPlayset>
                <idLanguage>${csv.language.code}</idLanguage>
                <price>${csv.price.get}</price>
-               <comment>$comment</comment>
+               <comments>$comment</comments>
                <count>1</count>
              </article>
             """
@@ -416,7 +419,10 @@ class MainController {
       handleEx(mkm.lastError, csvs)
       getErrorString(mkm)
     } else {
-      mkm.responseContent
+      val notOk = mkm.responseContent.contains("<success>false</success>")
+      if (notOk)
+        sys.error("Add partially not ok: " + mkm.responseContent)
+      "Add successful: " + mkm.responseContent
     }
   }
 

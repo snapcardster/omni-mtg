@@ -31,20 +31,58 @@ class SyncSpec extends FlatSpec with Matchers {
     implicit val controller: MainController = new MainController
     controller.readProperties()
 
-    // check changes should be empty
+    // delete everything collection related from seller user
+    var url = controller.snapBaseUrl + "/collection?priceSource=ck"
+    var res = connector.call(url, "GET", sellerAuth)
 
-    //val changed = controller.loadChangedFromSnap()
-    //changed shouldEqual "[]"
+    var arr = controller.asJsonArray(controller.fromJson(res))
+    val allIds = arr.map(_.asJsonObject).map(x => getLong(x, "id"))
+
+    // TODO: remove this code, this deletes all mkm offers:
+    // val extId = arr.map(_.asJsonObject).map(x => getLong(x, "externalId")).toList
+    // controller.deleteFromMkmStock(extId)
+
+    val inBlocks = allIds.grouped(128)
+    // to get around error "URI length exceeds the configured limit of 2048 characters"
+    for (block <- inBlocks) {
+      val ids = block.mkString(",")
+      url = controller.snapBaseUrl + "/collection/" + ids
+      res = connector.call(url, "DELETE", sellerAuth)
+      println(res)
+      url = controller.snapBaseUrl + "/offers/" + ids
+      res = connector.call(url, "DELETE", sellerAuth)
+      println(res)
+    }
+
+    // check changes should be empty (there's nothing to sync)
+    var changed = controller.loadChangedFromSnap()
+    changed shouldEqual "[]"
+
+    // get collection for lookup
+    url = controller.snapBaseUrl + "/collection?priceSource=ck"
+    res = connector.call(url, "GET", sellerAuth)
+    res shouldEqual ("[]")
+
+    var csv = controller.loadMkmStock
+    println("csv with " + csv.count(_ == '\n') + " lines read from mkm api")
+
+    // sync into snap
+    var status = controller.postToSnap(csv)
+    println(status)
+
+    // check changes should be empty (just synced and nothing happened in between)
+    changed = controller.loadChangedFromSnap()
+    changed shouldEqual "[]"
 
     // put card into cart and checkout
     val (offerId, shipmentCardId) = putSomeCardIntoCartAndCheckout()
 
     // get collection for lookup
-    var url = controller.snapBaseUrl + "/collection?priceSource=ck"
-    var res = connector.call(url, "GET", sellerAuth)
+    url = controller.snapBaseUrl + "/collection?priceSource=ck"
+    res = connector.call(url, "GET", sellerAuth)
     res shouldNot equal("[]")
 
-    var arr = controller.asJsonArray(controller.fromJson(res))
+    arr = controller.asJsonArray(controller.fromJson(res))
     val collItem = arr.map(_.asJsonObject).find(x => getLong(x, "id") == offerId).get
     val collItemExtId = getLong(collItem, "externalId")
 
@@ -62,13 +100,27 @@ class SyncSpec extends FlatSpec with Matchers {
     changeType shouldEqual "reserved"
 
     // then deleting this item at mkm
+
+    // get line before delete
+    val csvLinesBeforeDelete = csv.split("\n").find(_.contains(collItemExtId.toString)).get.replaceAll("\"", "")
+
     val idsToDelete = arr.map(_.asJsonObject).filter(x => x.getString("type") == "reserved").map(x => getLong(x.asJsonObject, "externalId")).toList
-    var status = controller.deleteFromMkmStock(idsToDelete)
+    status = controller.deleteFromMkmStock(idsToDelete)
     println(status)
 
     // should really delete it
-    var csv = controller.loadMkmStock()
-    csv shouldNot contain(collItemExtId.toString)
+    waitSomeTime()
+    csv = controller.loadMkmStock()
+    // Get csv line (that ends with qty;onSaleFlag)
+    val csvLinesAfterDelete = csv.split("\n").find(_.contains(collItemExtId.toString)).map(_.replaceAll("\"", "") )
+    if (csvLinesAfterDelete.isEmpty) { // line can be fully deleted if one was left
+      csvLinesBeforeDelete.endsWith(";1;1") shouldEqual true
+    } else { // line should not be fully deleted if more than one was left
+      csvLinesBeforeDelete.endsWith(";1;1") shouldEqual false
+      // and it must be changed after successful delete
+      csvLinesAfterDelete.get shouldNot equal(csvLinesBeforeDelete)
+    }
+
 
     // searching in purchases for this id
     url = controller.snapBaseUrl + "/marketplace/bundle/purchases"
@@ -93,7 +145,7 @@ class SyncSpec extends FlatSpec with Matchers {
     println(res)
     res shouldNot equal("")
 
-    // show now let sync considered the card to-be-added again which is returned from sync route
+    // show now that the sync also shows the card to-be-added again
     res = controller.loadChangedFromSnap()
     arr = controller.asJsonArray(controller.fromJson(res))
 
@@ -109,18 +161,27 @@ class SyncSpec extends FlatSpec with Matchers {
     val info = changeItem.getJsonObject("info")
     val csvItemToAdd = CsvFormat.parse(info)
 
-    // check old csv where item was removed
-    csv shouldNot contain(csvItemToAdd.name)
-
     status = controller.addToMkmStock(csvJsonItems.map(x => CsvFormat.parse(x)))
     println(status)
 
-    // don't know why but getting the stock immediately doesn't reflect the add, so just wait some sec
-    val sec = 12
-    Thread.sleep(sec * 1000)
+    waitSomeTime()
 
     csv = controller.loadMkmStock()
-    csv.contains(csvItemToAdd.name) shouldEqual true
+    val csvLinesAfterAdd = csv.split("\n").find(_.contains(csvItemToAdd.name)).get.replaceAll("\"", "")
+    if (csvLinesAfterDelete.isEmpty) { // either removed, then only one was left
+      csvLinesBeforeDelete.endsWith(";1;1") shouldEqual true
+      csv.contains(csvItemToAdd.name) shouldEqual true
+    } else { // or the line has changed and there was more than one
+      csvLinesBeforeDelete.endsWith(";1;1") shouldEqual false
+      csvLinesAfterAdd shouldNot equal(csvLinesAfterDelete.get)
+      csvLinesAfterAdd shouldEqual csvLinesBeforeDelete
+    }
+  }
+
+  /** don't know why but getting the stock immediately doesn't reflect changes, so just wait some seconds */
+  def waitSomeTime(): Unit = {
+    val sec = 12
+    Thread.sleep(sec * 1000)
   }
 
   def findChangeItem(arr: Array[JsonValue], collItemExtId: Long): JsonObject = {
@@ -138,7 +199,7 @@ class SyncSpec extends FlatSpec with Matchers {
     var res = connector.call(url, "GET", buyerAuth)
 
     //println(res)
-    res.shouldNot(equal(""))
+    res.shouldNot(equal("[]"))
 
     val arr = controller.asJsonArray(controller.fromJson(res))
     val firstFree = arr.map(_.asJsonObject).find(x => getLong(x, "offerReservedUntil") == 0L).get

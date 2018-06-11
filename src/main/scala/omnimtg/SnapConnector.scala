@@ -28,6 +28,8 @@ class SnapConnector {
     val str =
       if (lastCode == 200)
         connection.getInputStream
+      else if (lastCode == 204)
+        new ByteArrayInputStream("204 No Content".getBytes)
       else
         connection.getErrorStream
     if (str == null) {
