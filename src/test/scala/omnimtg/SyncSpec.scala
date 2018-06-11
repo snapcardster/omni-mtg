@@ -104,7 +104,7 @@ class SyncSpec extends FlatSpec with Matchers {
     // get line before delete
     val csvLinesBeforeDelete = csv.split("\n").find(_.contains(collItemExtId.toString)).get.replaceAll("\"", "")
 
-    val idsToDelete = arr.map(_.asJsonObject).filter(x => x.getString("type") == "reserved").map(x => getLong(x.asJsonObject, "externalId")).toList
+    val idsToDelete = arr.map(x => SellerDataChanged.parse(x.asJsonObject)).filter(x => x.`type` == "reserved").toList
     status = controller.deleteFromMkmStock(idsToDelete)
     println(status)
 
@@ -112,7 +112,7 @@ class SyncSpec extends FlatSpec with Matchers {
     waitSomeTime()
     csv = controller.loadMkmStock()
     // Get csv line (that ends with qty;onSaleFlag)
-    val csvLinesAfterDelete = csv.split("\n").find(_.contains(collItemExtId.toString)).map(_.replaceAll("\"", "") )
+    val csvLinesAfterDelete = csv.split("\n").find(_.contains(collItemExtId.toString)).map(_.replaceAll("\"", ""))
     if (csvLinesAfterDelete.isEmpty) { // line can be fully deleted if one was left
       csvLinesBeforeDelete.endsWith(";1;1") shouldEqual true
     } else { // line should not be fully deleted if more than one was left
@@ -156,12 +156,12 @@ class SyncSpec extends FlatSpec with Matchers {
     changeType = changeItem.getString("type")
     changeType shouldEqual "added"
 
-    val csvJsonItems = arr.toList.map(_.asJsonObject).filter(_.getString("type") == "added").map(_.getJsonObject("info"))
+    val items = arr.toList.map(x => SellerDataChanged.parse(x.asJsonObject)).filter(x => x.`type` == "added")
 
     val info = changeItem.getJsonObject("info")
     val csvItemToAdd = CsvFormat.parse(info)
 
-    status = controller.addToMkmStock(csvJsonItems.map(x => CsvFormat.parse(x)))
+    status = controller.addToMkmStock(items)
     println(status)
 
     waitSomeTime()

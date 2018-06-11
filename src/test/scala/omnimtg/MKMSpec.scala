@@ -12,7 +12,7 @@ class MKMSpec extends FlatSpec with Matchers {
 
     val firstRowCols = csv.split("\n").drop(1).head.split(";")
     val firstId = firstRowCols.head.replaceAll("\"", "").toLong
-    controller.deleteFromMkmStock(List(firstId))
+    controller.deleteFromMkmStock(List(SellerDataChanged("", Some(firstId), None, None)))
 
     val csv2 = controller.loadMkmStock()
     csv2.shouldNot(equal(""))

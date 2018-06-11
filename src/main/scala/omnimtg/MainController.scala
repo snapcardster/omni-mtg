@@ -17,6 +17,7 @@ import javax.xml.parsers.{DocumentBuilder, DocumentBuilderFactory}
 import org.w3c.dom.{Document, Node, NodeList}
 
 import scala.collection.immutable
+import scala.collection.mutable.ListBuffer
 
 class MainController {
   // TODO: change back to test after test
@@ -213,7 +214,7 @@ class MainController {
 
     val removedOrReservedItems = list.flatMap { parts =>
       if (parts.`type` == "removed" || parts.`type` == "reserved") {
-        List(parts.externalId.get)
+        List(parts)
       } else {
         Nil
       }
@@ -222,9 +223,15 @@ class MainController {
     val resDel = deleteFromMkmStock(removedOrReservedItems)
     output.setValue(resDel)
 
+    var body = resDel
+    var res = new SnapConnector().call(snapChangedEndpoint, "POST", getAuth, body)
+    println(res)
+    output.setValue(res)
+
+
     val addedItems = list.flatMap { parts =>
       if (parts.`type` == "added" || parts.`type` == "changed") {
-        List(parts.info.get)
+        List(parts)
       } else {
         Nil
       }
@@ -233,22 +240,12 @@ class MainController {
     val resSync = resDel + "\n" + resAdd
     output.setValue(resSync)
 
-    // TODO post snapChangedEndpoint data:
-    val items = List(Map(
-      "collectionId" -> 42,
-      "successful" -> false,
-      "info" -> "mkm error"
-    ), Map(
-      "collectionId" -> 512839,
-      "successful" -> true
-    ))
-    val body = "[" + items.map(x => jsonFromMap(x)).mkString(", ") + "]"
-    // val body = ""
-    val res = new SnapConnector().call(snapChangedEndpoint, "POST", getAuth, body)
+    body = resAdd
+    res = new SnapConnector().call(snapChangedEndpoint, "POST", getAuth, body)
+    println(res)
+    output.setValue(res)
 
-    // output.setValue(res)
-    // res
-    resSync
+    res
   }
 
   def handleEx(e: Throwable, obj: Any = null): Unit = {
@@ -352,8 +349,8 @@ class MainController {
     x
   }
 
-  def deleteFromMkmStock(ids: List[Long]): String = {
-    if (ids.isEmpty)
+  def deleteFromMkmStock(entries: List[SellerDataChanged]): String = {
+    if (entries.isEmpty)
       return ""
 
     val mkm = getMkm
@@ -362,10 +359,10 @@ class MainController {
       s"""<?xml version="1.0" encoding="utf-8"?>
       <request>
       ${
-        ids.map(id =>
+        entries.map(entry =>
           s"""
             <article>
-              <idArticle>$id</idArticle>
+              <idArticle>${entry.externalId.get}</idArticle>
               <count>1</count>
             </article>
             """
@@ -375,19 +372,15 @@ class MainController {
       """
     val hasOutput = false
     if (!mkm.request(mkmStockEndpoint, "DELETE", body, "application/xml", hasOutput)) {
-      handleEx(mkm.lastError, ids)
+      handleEx(mkm.lastError, entries)
       getErrorString(mkm)
     } else {
-      // TODO: Parse xml, then return Confirmation List
-      val notOk = mkm.responseContent.contains("<success>false</success>")
-      if (notOk)
-        sys.error("Delete partially not ok: " + mkm.responseContent)
-      "Delete successful: " + ids + "\n" + mkm.responseContent
+      getConfirmation(mkm.responseContent, "deleted", entries)
     }
   }
 
-  def addToMkmStock(csvs: List[CsvFormat]): String = {
-    if (csvs.isEmpty)
+  def addToMkmStock(entries: List[SellerDataChanged]): String = {
+    if (entries.isEmpty)
       return ""
 
     val mkm = getMkm
@@ -396,7 +389,7 @@ class MainController {
       s"""<?xml version="1.0" encoding="utf-8"?>
       <request>
       ${
-        csvs.map { csv =>
+        entries.map { entry =>
           // only insert ist supported right now, not update
           //val extIdInfo = ""
           // id.externalId match {
@@ -406,7 +399,7 @@ class MainController {
 
           // Cannot change qty, see:
           // https://www.mkmapi.eu/ws/documentation/API_2.0:Stock
-
+          val csv = entry.info.get
           val csvLine = csv.meta.replace("\"", "").split(";")
           // TODO: Apache CSV?
           val prodId = csvLine(1)
@@ -431,17 +424,10 @@ class MainController {
       """
     val hasOutput = false
     if (!mkm.request(mkmStockEndpoint, "POST", body, "application/xml", hasOutput)) {
-      handleEx(mkm.lastError, csvs)
+      handleEx(mkm.lastError, entries)
       getErrorString(mkm)
     } else {
-      // TODO: Parse xml, then return Confirmation List
-      val doc = getXml(mkm.responseContent)
-      val nodeList = xmlList(doc.getElementsByTagName("response"))
-
-      val notOk = mkm.responseContent.contains("<success>false</success>")
-      if (notOk)
-        sys.error("Add partially not ok: " + mkm.responseContent)
-      "Add successful: " + mkm.responseContent
+      getConfirmation(mkm.responseContent, "inserted", entries)
     }
   }
 
@@ -453,7 +439,7 @@ class MainController {
     * https://www.mkyong.com/java/how-to-read-xml-file-in-java-dom-parser/
     * https://www.owasp.org/index.php/Injection_Prevention_Cheat_Sheet_in_Java#XML:_External_Entity_attack
     */
-  def getXml(res: String) = {
+  def getXml(xmlDoc: String) = {
     val dbFactory = DocumentBuilderFactory.newInstance
     dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
     dbFactory.setFeature("http://xml.org/sax/features/external-general-entities", false)
@@ -462,12 +448,63 @@ class MainController {
     dbFactory.setXIncludeAware(false)
     dbFactory.setExpandEntityReferences(false)
     val dBuilder = dbFactory.newDocumentBuilder
-    val doc = dBuilder.parse(new ByteArrayInputStream(res.getBytes))
+    val doc = dBuilder.parse(new ByteArrayInputStream(xmlDoc.getBytes))
     doc.getDocumentElement.normalize
     doc
   }
 
   def getErrorString(mkm: M11DedicatedApp): String = {
     s"""{"error": s"Returned HTTP code ${mkm.responseCode}, exception: ${errorText(mkm.lastError)}"}"""
+  }
+
+  def getConfirmation(xml: String, tagName: String, entries: List[SellerDataChanged]): String = {
+    val lst = xmlList(getXml(xml).getElementsByTagName(tagName))
+    val buf = new ListBuffer[SellerDataChanged]
+    buf.append(entries: _*)
+
+    val items = lst.map { x =>
+      val xs = xmlList(x.getChildNodes)
+      val success = java.lang.Boolean.parseBoolean(xs.find(_.getNodeName == "success").get.getTextContent)
+      val message = xs.find(_.getNodeName == "message").map(_.getTextContent)
+      val value = xs.find(_.getNodeName == "idArticle").get
+
+      val ch = xmlList(value.getChildNodes)
+      val idArticle =
+        if (ch.size == 1 && ch.head.getNodeType == Node.TEXT_NODE) {
+          ch.head.getTextContent.toLong
+        } else {
+          ch.find(_.getNodeName == "idArticle").get.getTextContent.toLong
+        }
+
+      // TODO: Remove after find to prevent duplicate findings? (one idArticle maps to many collection ids)
+      val index = buf.indexWhere(_.externalId.get == idArticle)
+
+      val collId =
+        if (index == -1) {
+          // TODO: Test this!
+          idArticle
+        } else {
+          val item = buf(index)
+          buf.remove(index)
+          item.collectionId.get
+        }
+
+      val mapEntry =
+        if (message.isDefined) {
+          Map(
+            "info" -> message.get,
+            "collectionId" -> collId,
+            "successful" -> success
+          )
+        } else {
+          Map(
+            "collectionId" -> collId,
+            "successful" -> success
+          )
+        }
+      mapEntry
+    }
+    val body = "[" + items.map(a => jsonFromMap(a)).mkString(", ") + "]"
+    body
   }
 }
