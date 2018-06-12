@@ -13,10 +13,9 @@ import java.util.{Base64, Date, Properties}
 import javafx.beans.property._
 import javafx.beans.value._
 import javax.json.{Json, JsonStructure, JsonValue}
-import javax.xml.parsers.{DocumentBuilder, DocumentBuilderFactory}
-import org.w3c.dom.{Document, Node, NodeList}
+import javax.xml.parsers.DocumentBuilderFactory
+import org.w3c.dom.{Node, NodeList}
 
-import scala.collection.immutable
 import scala.collection.mutable.ListBuffer
 
 class MainController {
@@ -173,6 +172,7 @@ class MainController {
 
             val res = postToSnap(csv)
             output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
+            output.setValue("Sync successfully")
           } catch {
             case e: Exception => handleEx(e)
           }
@@ -235,8 +235,8 @@ class MainController {
     val resDel = deleteFromMkmStock(removedOrReservedItems)
     output.setValue(resDel)
 
-    var body = resDel
-    var res = new SnapConnector().call(snapChangedEndpoint, "POST", getAuth, body)
+    var body = if (resDel.isEmpty) "[]" else resDel
+    var res = new SnapConnector().call(snapChangedEndpoint, "POST", auth = getAuth, body = body)
     println(res)
     output.setValue(res)
 
@@ -252,7 +252,8 @@ class MainController {
     val resSync = resDel + "\n" + resAdd
     output.setValue(resSync)
 
-    body = resAdd
+
+    body = if (resAdd.isEmpty) "[]" else resAdd
     res = new SnapConnector().call(snapChangedEndpoint, "POST", getAuth, body)
     println(res)
     output.setValue(res)
