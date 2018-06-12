@@ -172,7 +172,7 @@ class MainController {
 
             val res = postToSnap(csv)
             output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
-            output.setValue("Sync successfully")
+            output.setValue(outputPrefix() + "Sync successfully")
           } catch {
             case e: Exception => handleEx(e)
           }
@@ -388,7 +388,7 @@ class MainController {
       handleEx(mkm.lastError, entries)
       getErrorString(mkm)
     } else {
-      getConfirmation(mkm.responseContent, "deleted", entries)
+      getConfirmation(mkm.responseContent, "deleted", entries, false)
     }
   }
 
@@ -440,7 +440,7 @@ class MainController {
       handleEx(mkm.lastError, entries)
       getErrorString(mkm)
     } else {
-      getConfirmation(mkm.responseContent, "inserted", entries)
+      getConfirmation(mkm.responseContent, "inserted", entries, true)
     }
   }
 
@@ -470,16 +470,17 @@ class MainController {
     s"""{"error": s"Returned HTTP code ${mkm.responseCode}, exception: ${errorText(mkm.lastError)}"}"""
   }
 
-  def getConfirmation(xml: String, tagName: String, entries: List[SellerDataChanged]): String = {
+  def getConfirmation(xml: String, tagName: String, entries: List[SellerDataChanged], added: Boolean): String = {
     val lst = xmlList(getXml(xml).getElementsByTagName(tagName))
     val buf = new ListBuffer[SellerDataChanged]
     buf.append(entries: _*)
 
-    val items = lst.map { x =>
+    val items: Seq[Map[String, Any]] = lst.flatMap { x =>
       val xs = xmlList(x.getChildNodes)
       val success = java.lang.Boolean.parseBoolean(xs.find(_.getNodeName == "success").get.getTextContent)
       val message = xs.find(_.getNodeName == "message").map(_.getTextContent)
       val value = xs.find(_.getNodeName == "idArticle").get
+      val englishName = xs.find(_.getNodeName == "engName").map(_.getTextContent)
 
       val ch = xmlList(value.getChildNodes)
       val idArticle =
@@ -490,12 +491,12 @@ class MainController {
         }
 
       // TODO: Remove after find to prevent duplicate findings? (one idArticle maps to many collection ids)
-      val index = buf.indexWhere(_.externalId.get == idArticle)
+      val index = buf.indexWhere(b => b.externalId.get == idArticle)
 
       val collId =
         if (index == -1) {
           // TODO: Test this!
-          idArticle
+          -1
         } else {
           val item = buf(index)
           buf.remove(index)
@@ -503,21 +504,36 @@ class MainController {
         }
 
       val mapEntry =
-        if (message.isDefined) {
-          Map(
-            "info" -> message.get,
-            "collectionId" -> collId,
-            "successful" -> success
-          )
-        } else {
-          Map(
-            "collectionId" -> collId,
-            "successful" -> success
-          )
+        if (collId == -1){
+          None
+        }else {
+          if (message.isDefined) {
+            Some(Map(
+              "info" -> message.get,
+              "collectionId" -> collId,
+              "successful" -> success,
+              "added" -> added
+            ))
+          } else {
+            Some(Map(
+              "collectionId" -> collId,
+              "successful" -> success,
+              "added" -> added
+            ))
+          }
         }
       mapEntry
     }
-    val body = "[" + items.map(a => jsonFromMap(a)).mkString(", ") + "]"
+
+    // If there are entries left without a matching item, they got a new articleId and must be removed and (in the next sync) new inserted to snapcardster
+    val needToRemove: Seq[Map[String, Any]] = (if (added) entries.filter(e => !items.exists(i => i.getOrElse("collectionId", 0).toString == e.collectionId.getOrElse(-1).toString)) else Nil).map { x =>
+      Map("collectionId" -> x.collectionId.getOrElse(-1),
+      "successful" -> false,
+      "added" -> added,
+      "info" -> "needToRemoveFromSnapcardster")
+    }
+
+    val body = "[" + (items ++ needToRemove).map(a => jsonFromMap(a)).mkString(", ") + "]"
     body
   }
 }
