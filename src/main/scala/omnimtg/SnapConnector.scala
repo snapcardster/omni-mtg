@@ -4,9 +4,11 @@ import java.io._
 import java.net.{HttpURLConnection, URL}
 
 class SnapConnector {
-  def call(requestURL: String, method: String, auth: String, body: String = null): String = {
+  def call(requestURL: String, method: String, auth: String = null, body: String = null): String = {
     val connection: HttpURLConnection = new URL(requestURL).openConnection.asInstanceOf[HttpURLConnection]
-    connection.addRequestProperty("Authorization", auth)
+    if (auth !=null){
+      connection.addRequestProperty("Authorization", auth)
+    }
     if (body != null) {
       connection.setRequestProperty("Content-Type", "application/json")
       connection.setRequestProperty("Accept", "application/json")

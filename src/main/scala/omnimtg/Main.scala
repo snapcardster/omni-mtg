@@ -49,6 +49,10 @@ class MainGUI extends Application {
     x.setOnMouseClicked(_ => controller.save())
   }
 
+  def bindLogin(x: JFXButton): Unit = {
+    x.setOnMouseClicked(_ => controller.loginSnap())
+  }
+
   override def start(primaryStage: Stage): Unit = {
     controller.start()
 
@@ -115,11 +119,13 @@ class MainGUI extends Application {
     )
 
     val snap = new VBox(
-      new Label("🔒 Snapcardster Api Key"),
-      set(new Hyperlink("https://snapcardster.com/app"))(_.setOnMouseClicked(x => handleClick(x))),
-      pasteButton("snap"),
+      new Label("🔒 Snapcardster Credentials"),
+      //set(new Hyperlink("https://snapcardster.com/app"))(_.setOnMouseClicked(x => handleClick(x))),
+      //pasteButton("snap"),
       set(new JFXTextField("User"))(linkTo(_, controller.snapUser)),
+      set(new JFXTextField("Password"))(linkTo(_, controller.snapPassword)),
       set(new JFXTextField("Token"))(linkTo(_, controller.snapToken)),
+      LoginAndGetTokenBtn(),
       saveBtn()
     )
 
@@ -153,6 +159,13 @@ class MainGUI extends Application {
     set(new JFXButton("📋 Paste from Clipboard"))(x => {
       x.setStyle(button2Css)
       x.setOnMouseClicked(_ => controller.insertFromClip(mode))
+    })
+  }
+
+  def LoginAndGetTokenBtn(): JFXButton = {
+    set(new JFXButton("💾 Login and get Token"))(x => {
+      x.setStyle(buttonCss)
+      bindLogin(x)
     })
   }
 

@@ -21,8 +21,9 @@ import scala.collection.mutable.ListBuffer
 
 class MainController {
   // TODO: change back to test after test
-  val snapBaseUrl: String = "http://localhost:9000" //"https://test.snapcardster.com"
+  val snapBaseUrl: String = "https://test.snapcardster.com"
   val snapCsvEndpoint: String = snapBaseUrl + "/importer/sellerdata/from/csv"
+  val snapLoginEndpoint: String = snapBaseUrl + "/auth"
   val snapChangedEndpoint: String = snapBaseUrl + "/marketplace/sellerdata/changed"
 
   val mkmBaseUrl: String = "https://www.mkmapi.eu/ws/v2.0"
@@ -40,7 +41,8 @@ class MainController {
   val mkmAccessToken: StringProperty = newProp("mkmAccessToken", "Enter MKM Access Token")
   val mkmAccessTokenSecret: StringProperty = newProp("mkmAccessTokenSecret", "Enter MKM Access Token Secret")
   val snapUser: StringProperty = newProp("snapUser", "Enter Snapcardster User Id")
-  val snapToken: StringProperty = newProp("snapToken", "Enter Snapcardster Token")
+  val snapPassword: StringProperty = newProp("snapPassword", "Enter Snapcardster Password")
+  val snapToken: StringProperty = newProp("snapToken", "Snapcardster Token")
 
   val output: StringProperty = new SimpleStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
   val interval: IntegerProperty = new SimpleIntegerProperty(180)
@@ -129,6 +131,16 @@ class MainController {
     } finally {
       str.close()
     }
+  }
+
+  def loginSnap(): Unit = {
+    output.setValue(outputPrefix() + "Logging in to Snapcardster...")
+    val body = s"""{\"userId\":\"${snapUser.getValue}\",\"password\":\"${snapPassword.getValue}\"}"""
+    output.setValue(outputPrefix() + body)
+    val res = new SnapConnector().call(snapLoginEndpoint, "POST", body = body)
+    output.setValue(outputPrefix() + res)
+    val json: JsonStructure = fromJson(res)
+    snapToken.setValue(json.asJsonObject.getString("token"))
   }
 
   def stop(): Unit = {
