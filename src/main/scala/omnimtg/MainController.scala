@@ -32,6 +32,7 @@ class MainController {
   var thread: Thread = _
   val prop: Properties = new Properties
   val configPath: Path = Paths.get("secret.properties")
+  val backupPath: Path = Paths.get("mkm_backup_" + System.currentTimeMillis() + ".csv")
   var aborted: BooleanProperty = new SimpleBooleanProperty(false)
   var running: BooleanProperty = new SimpleBooleanProperty(false)
 
@@ -45,6 +46,8 @@ class MainController {
 
   val output: StringProperty = new SimpleStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
   val interval: IntegerProperty = new SimpleIntegerProperty(180)
+
+  var backupFirst = true
 
   def insertFromClip(mode: String): Unit = {
     val data = String.valueOf(Toolkit.getDefaultToolkit.getSystemClipboard.getData(DataFlavor.stringFlavor))
@@ -164,6 +167,23 @@ class MainController {
       while (!aborted.getValue)
         if (running.getValue) {
           try {
+            if (backupFirst) {
+              // Create a local backup of the MKM Stock
+              output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
+              val csv = loadMkmStock()
+
+              val writer = new PrintWriter(backupPath.toFile)
+
+              try {
+                writer.write(csv)
+              } catch {
+                case e: Exception => handleEx(e)
+              } finally {
+                writer.close()
+              }
+
+              backupFirst = false
+            }
             val res1 = loadSnapChangedAndDeleteFromStock()
             output.setValue(outputPrefix() + res1)
 
@@ -504,9 +524,9 @@ class MainController {
         }
 
       val mapEntry =
-        if (collId == -1){
+        if (collId == -1) {
           None
-        }else {
+        } else {
           if (message.isDefined) {
             Some(Map(
               "info" -> message.get,
@@ -528,9 +548,9 @@ class MainController {
     // If there are entries left without a matching item, they got a new articleId and must be removed and (in the next sync) new inserted to snapcardster
     val needToRemove: Seq[Map[String, Any]] = (if (added) entries.filter(e => !items.exists(i => i.getOrElse("collectionId", 0).toString == e.collectionId.getOrElse(-1).toString)) else Nil).map { x =>
       Map("collectionId" -> x.collectionId.getOrElse(-1),
-      "successful" -> false,
-      "added" -> added,
-      "info" -> "needToRemoveFromSnapcardster")
+        "successful" -> false,
+        "added" -> added,
+        "info" -> "needToRemoveFromSnapcardster")
     }
 
     val body = "[" + (items ++ needToRemove).map(a => jsonFromMap(a)).mkString(", ") + "]"
