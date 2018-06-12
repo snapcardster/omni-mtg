@@ -81,24 +81,33 @@ class MainGUI extends Application {
       x.setDisable(true)
     }, 1, 3)
 
+    val fields = List(
+      controller.mkmAppToken, controller.mkmAppSecret, controller.mkmAccessToken, controller.mkmAccessTokenSecret,
+      controller.snapUser, controller.snapToken
+    )
+
+    val startButton = set(new JFXButton("🔄 Start Sync"))(x => {
+      x.setStyle(buttonCss)
+
+      x.disableProperty.bind(fields.map(_.isEmpty).reduce(_ or _))
+      x.setOnMouseClicked(_ => {
+        controller.running.setValue(!controller.running.getValue)
+        val txt =
+          if (controller.running.getValue)
+            "▶ Running, click to stop"
+          else
+            "⏸ Stopped, click to start"
+        x.setText(txt)
+      })
+    })
+
+    if (!fields.map(_.isEmpty).reduce(_ or _).get()) {
+      controller.running.setValue(true)
+      startButton.setText("▶ Running, click to stop")
+    }
+
     val main = set(new VBox(
-      set(new JFXButton("🔄 Start Sync"))(x => {
-        x.setStyle(buttonCss)
-        val fields = List(
-          controller.mkmAppToken, controller.mkmAppSecret, controller.mkmAccessToken, controller.mkmAccessTokenSecret,
-          controller.snapUser, controller.snapToken
-        )
-        x.disableProperty.bind(fields.map(_.isEmpty).reduce(_ or _))
-        x.setOnMouseClicked(_ => {
-          controller.running.setValue(!controller.running.getValue)
-          val txt =
-            if (controller.running.getValue)
-              "▶ Running, click to stop"
-            else
-              "⏸ Stopped, click to start"
-          x.setText(txt)
-        })
-      }),
+      startButton,
       grid,
       new Label("📜 Output"),
       set(new JFXTextArea("..."))(x => {
@@ -111,10 +120,26 @@ class MainGUI extends Application {
       new Label("🔒 MKM Api Key"),
       set(new Hyperlink("https://cardmarket.com/en/Magic/MainPage/showMyAccount"))(_.setOnMouseClicked(x => handleClick(x))),
       pasteButton("mkm"),
-      set(new JFXTextField())(linkTo(_, controller.mkmAppToken)),
-      set(new JFXTextField())(linkTo(_, controller.mkmAppSecret)),
-      set(new JFXTextField())(linkTo(_, controller.mkmAccessToken)),
-      set(new JFXTextField())(linkTo(_, controller.mkmAccessTokenSecret)),
+      set({
+        val txt = new JFXTextField()
+        txt.setPromptText("Enter MKM App Token")
+        txt
+      })(linkTo(_, controller.mkmAppToken)),
+      set({
+        val txt = new JFXTextField()
+        txt.setPromptText("Enter MKM App Secret")
+        txt
+      })(linkTo(_, controller.mkmAppSecret)),
+      set({
+        val txt = new JFXTextField()
+        txt.setPromptText("Enter MKM Access Token")
+        txt
+      })(linkTo(_, controller.mkmAccessToken)),
+      set({
+        val txt = new JFXTextField()
+        txt.setPromptText("Enter MKM Access Token Secret")
+        txt
+      })(linkTo(_, controller.mkmAccessTokenSecret)),
       saveBtn()
     )
 
@@ -122,9 +147,21 @@ class MainGUI extends Application {
       new Label("🔒 Snapcardster Credentials"),
       //set(new Hyperlink("https://snapcardster.com/app"))(_.setOnMouseClicked(x => handleClick(x))),
       //pasteButton("snap"),
-      set(new JFXTextField("User"))(linkTo(_, controller.snapUser)),
-      set(new JFXTextField("Password"))(linkTo(_, controller.snapPassword)),
-      set(new JFXTextField("Token"))(linkTo(_, controller.snapToken)),
+      set({
+        val txt = new JFXTextField("User")
+        txt.setPromptText("Enter Snapcardster User Id")
+        txt
+      })(linkTo(_, controller.snapUser)),
+      set({
+        val txt = new JFXTextField("Password")
+        txt.setPromptText("Enter Snapcardster Password")
+        txt
+      })(linkTo(_, controller.snapPassword)),
+      set({
+        val txt = new JFXTextField("Token")
+        txt.setPromptText("Snapcardster Token")
+        txt
+      })(linkTo(_, controller.snapToken)),
       LoginAndGetTokenBtn(),
       saveBtn()
     )
