@@ -20,7 +20,7 @@ import scala.collection.mutable.ListBuffer
 
 class MainController {
   // TODO: change back to test after test
-  val snapBaseUrl: String = "https://test.snapcardster.com"
+  val snapBaseUrl: String = "https://api.snapcardster.com"
   val snapCsvEndpoint: String = snapBaseUrl + "/importer/sellerdata/from/csv"
   val snapLoginEndpoint: String = snapBaseUrl + "/auth"
   val snapChangedEndpoint: String = snapBaseUrl + "/marketplace/sellerdata/changed"

@@ -22,7 +22,7 @@ object Main {
 }
 
 class MainGUI extends Application {
-  val title = "Omni MTG Sync Tool, v2018-06-12"
+  val title = "Omni MTG Sync Tool, v2018-06-13"
 
   val controller: MainController = new MainController
   val buttonCss = "-jfx-button-type: RAISED; -fx-background-color: blue; -fx-text-fill: white;"
