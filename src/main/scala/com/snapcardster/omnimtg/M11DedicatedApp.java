@@ -1,4 +1,4 @@
-package omnimtg;
+package com.snapcardster.omnimtg;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;

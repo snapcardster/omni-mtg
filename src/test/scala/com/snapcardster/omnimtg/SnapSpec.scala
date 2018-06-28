@@ -1,4 +1,4 @@
-package omnimtg
+package com.snapcardster.omnimtg
 
 import org.scalatest._
 

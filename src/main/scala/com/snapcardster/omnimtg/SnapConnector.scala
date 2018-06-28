@@ -1,4 +1,4 @@
-package omnimtg
+package com.snapcardster.omnimtg
 
 import java.io._
 import java.net.{HttpURLConnection, URL}
