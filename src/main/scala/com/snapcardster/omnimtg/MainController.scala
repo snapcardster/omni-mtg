@@ -175,47 +175,7 @@ class MainController {
         if (running.getValue) {
           nextSync.set(0)
           try {
-            if (backupFirst) {
-              // Create a local backup of the MKM Stock
-              output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
-              val csv = loadMkmStock()
-
-              val writer = new PrintWriter(backupPath.toFile)
-
-              try {
-                writer.write(csv)
-              } catch {
-                case e: Exception => handleEx(e)
-              } finally {
-                writer.close()
-              }
-
-              backupFirst = false
-            }
-
-            val sb = new StringBuilder
-            val res1 = loadSnapChangedAndDeleteFromStock(sb)
-
-            sb.append("Loading MKM stock...\n")
-            val csv = loadMkmStock()
-            sb.append("  " + csv.count(x => x == '\n') + " lines read from mkm stock\n")
-            output.setValue(sb.toString)
-
-            val res = postToSnap(csv)
-            // output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
-            val items = getChangeItems(res)
-
-            val info =
-              if (items.isEmpty)
-                "  No changes were done on the server, everything up to date"
-              else
-                items.map(readableChangeEntry)
-                  .sortBy(x => x)
-                  .groupBy(x => x).toList.map(x => "  " + x._2.length + " " + x._1)
-                  .mkString("\n")
-
-            sb.append("• Changes at Snapcardster:\n" + info)
-            output.setValue(sb.toString)
+            sync
           } catch {
             case e: Exception => handleEx(e)
           }
@@ -237,9 +197,62 @@ class MainController {
     t
   }
 
+  def sync(): Unit = {
+    if (backupFirst) {
+      // Create a local backup of the MKM Stock
+      output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
+      val csv = loadMkmStock()
+
+      val writer = new PrintWriter(backupPath.toFile)
+
+      try {
+        writer.write(csv)
+      } catch {
+        case e: Exception => handleEx(e)
+      } finally {
+        writer.close()
+      }
+
+      backupFirst = false
+    }
+
+    val sb = new StringBuilder
+    val res1 = loadSnapChangedAndDeleteFromStock(sb)
+
+    sb.append("Loading MKM stock...\n")
+    val csv = loadMkmStock()
+    sb.append("  " + csv.count(x => x == '\n') + " lines read from mkm stock\n")
+    output.setValue(sb.toString)
+
+    val res = postToSnap(csv)
+    // output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
+    val items = getChangeItems(res)
+
+    val info =
+      if (items.isEmpty)
+        "  No changes were done on the server, everything up to date"
+      else
+        readableChanges(items)
+
+    sb.append("• MKM to Snapcardster, changes at Snapcardster:\n" + info)
+    output.setValue(sb.toString)
+  }
+
+  private def readableChanges(items: Seq[SellerDataChanged]): String = {
+    items.map(readableChangeEntry)
+      .sortBy(x => x)
+      .groupBy(x => x).toList.map(x => "  " + x._2.length + " " + x._1)
+      .mkString("\n")
+  }
+
   def readableChangeEntry(x: SellerDataChanged): String = {
     val csv = x.info.get
-    x.`type` + " " + csv.name + " (" + csv.editionCode.get + ") " + csv.language.shortString + " " + csv.condition.shortString + (if (csv.foil) " Foil" else " Non-Foil") + " " + csv.price.get + "€"
+    x.`type` + " " + csv.name +
+      " (" + csv.editionCode.get + ") " + csv.language.shortString + " " +
+      csv.condition.shortString + (if (csv.foil) " Foil" else "") +
+      (if (csv.altered) " Altered" else "") +
+      (if (csv.signed) " Signed" else "") +
+      " " + csv.price.get + "€ (CSV: " + csv.meta + ")"
   }
 
   def outputPrefix(): String = {
@@ -251,7 +264,7 @@ class MainController {
   }
 
   def loadSnapChangedAndDeleteFromStock(info: StringBuilder): StringBuilder = {
-    info.append(outputPrefix() + "• MKM changes:\n")
+    info.append(outputPrefix() + "• Snapcardster to MKM, changes at MKM:\n")
     val json = loadChangedFromSnap()
 
     output.setValue(outputPrefix() + snapChangedEndpoint + "\n" + json)
@@ -265,7 +278,11 @@ class MainController {
       }
     }
 
-    info.append("Will remove " + removedOrReservedItems.size + " items...\n")
+
+    info.append(
+      "Will remove " + removedOrReservedItems.length + " items...\n"
+        + readableChanges(removedOrReservedItems) + "\n"
+    )
     output.setValue(info.toString)
 
     val resDel = deleteFromMkmStock(removedOrReservedItems)
@@ -284,7 +301,10 @@ class MainController {
         Nil
       }
     }
-    info.append("Will add " + addedItems.size + " items...\n")
+    info.append(
+      "Will add " + addedItems.length + " items...\n"
+        + readableChanges(addedItems) + "\n"
+    )
     output.setValue(info.toString)
 
     val resAdd = addToMkmStock(addedItems)
@@ -332,7 +352,8 @@ class MainController {
 
   def errorText(e: Throwable): String = {
     if (e != null) {
-      e.toString + "\n" + e.getStackTrace.take(4).mkString("\n")
+      val res = e.toString + "\n" + e.getStackTrace.take(4).mkString("\n")
+      res.substring(0, Math.min(res.length, 1000))
     } else {
       "null"
     }

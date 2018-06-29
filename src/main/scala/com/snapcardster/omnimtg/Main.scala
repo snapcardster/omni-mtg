@@ -13,6 +13,7 @@ import javafx.scene.control._
 import javafx.scene.image.Image
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout._
+import javafx.scene.text.Font
 import javafx.stage.Stage
 
 object Main {
@@ -127,6 +128,8 @@ class MainGUI extends Application {
       set(new TextArea("...")) { x =>
         linkTo(x, controller.output)
         x.setEditable(false)
+        x.setPrefWidth(640)
+        x.setPrefHeight(290)
       }
     ))(vbox => vbox.setSpacing(6))
 
@@ -175,8 +178,7 @@ class MainGUI extends Application {
 
     val pane = new GridPane
     val titleLabel = new Label(controller.title)
-    titleLabel.setScaleX(1.4)
-    titleLabel.setScaleY(1.4)
+    titleLabel.setFont(Font.font(16))
 
     val link = set(new Hyperlink("https://snapcardster.github.io")) { x =>
       x.setOnMouseClicked(x => handleClick(x))
@@ -186,7 +188,6 @@ class MainGUI extends Application {
     pane.add(set(mkm)(pad), 0, 1)
     pane.add(set(snap)(pad), 1, 1)
     pane.add(set(main)(pad), 0, 2, 2, 1)
-    pane.setPadding(new Insets(10.0))
 
     pane.setStyle(paneCss)
     pane
