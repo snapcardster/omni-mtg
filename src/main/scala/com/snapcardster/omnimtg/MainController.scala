@@ -24,8 +24,8 @@ class MainController {
 
   // TODO: change back to test after test
   // val snapBaseUrl: String = "https://api.snapcardster.com"
-  // val snapBaseUrl: String = "https://test.snapcardster.com"
-  val snapBaseUrl: String = "http://localhost:9000"
+  val snapBaseUrl: String = "https://test.snapcardster.com"
+  //val snapBaseUrl: String = "http://localhost:9000"
 
   val snapCsvEndpoint: String = snapBaseUrl + "/importer/sellerdata/from/csv"
   val snapLoginEndpoint: String = snapBaseUrl + "/auth"
