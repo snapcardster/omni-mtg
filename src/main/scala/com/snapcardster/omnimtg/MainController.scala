@@ -20,7 +20,7 @@ import scala.collection.mutable.ListBuffer
 import scala.util.Try
 
 class MainController {
-  val title = "Omni MTG Sync Tool, v2018-06-28"
+  val title = "Omni MTG Sync Tool, v2018-07-04"
 
   // TODO: change back to test after test
   // val snapBaseUrl: String = "https://api.snapcardster.com"
