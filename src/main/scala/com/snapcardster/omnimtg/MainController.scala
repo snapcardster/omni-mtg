@@ -20,16 +20,18 @@ import scala.collection.mutable.ListBuffer
 import scala.util.Try
 
 class MainController {
-  val title = "Omni MTG Sync Tool, v2018-07-04"
+  val title = "Omni MTG Sync Tool, v2018-07-05"
+
+  val version = "2"
 
   // TODO: change back to test after test
   val snapBaseUrl: String = "https://api.snapcardster.com"
   //val snapBaseUrl: String = "https://test.snapcardster.com"
   //val snapBaseUrl: String = "http://localhost:9000"
 
-  val snapCsvEndpoint: String = snapBaseUrl + "/importer/sellerdata/from/csv"
+  val snapCsvEndpoint: String = snapBaseUrl + s"/importer/sellerdata/from/csv/$version"
   val snapLoginEndpoint: String = snapBaseUrl + "/auth"
-  val snapChangedEndpoint: String = snapBaseUrl + "/marketplace/sellerdata/changed"
+  val snapChangedEndpoint: String = snapBaseUrl + s"/marketplace/sellerdata/changed/$version"
 
   val mkmBaseUrl: String = "https://www.mkmapi.eu/ws/v2.0"
   val mkmStockEndpoint: String = mkmBaseUrl + "/stock"

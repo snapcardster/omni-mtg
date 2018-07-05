@@ -4,10 +4,8 @@ import java.io._
 import java.net.{HttpURLConnection, URL}
 
 class SnapConnector {
-  val version = "2"
-
   def call(requestURL: String, method: String, auth: String = null, body: String = null): String = {
-    val connection: HttpURLConnection = new URL(requestURL + s"/$version").openConnection.asInstanceOf[HttpURLConnection]
+    val connection: HttpURLConnection = new URL(requestURL).openConnection.asInstanceOf[HttpURLConnection]
     if (auth !=null){
       connection.addRequestProperty("Authorization", auth)
     }
