@@ -1,24 +1,20 @@
 package com.snapcardster.omnimtg
 
-import java.awt.datatransfer._
-import java.awt.{Desktop, Toolkit}
 import java.io._
-import java.net.URI
 import java.nio.file._
 import java.util
 import java.util.regex._
 import java.util.zip._
 import java.util.{Base64, Date, Properties}
 
-import com.snapcardster.omnimtg.Interfaces.{BooleanProperty, IntegerProperty, PropertyFactory, StringProperty}
-import javax.json.{Json, JsonStructure, JsonValue}
+import com.google.gson.Gson
+import com.snapcardster.omnimtg.Interfaces._
 import javax.xml.parsers.DocumentBuilderFactory
 import org.w3c.dom.{Document, Node, NodeList}
 
 import scala.collection.mutable.ListBuffer
-import scala.util.Try
 
-class MainController(propFactory: PropertyFactory) {
+class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) {
   val title = "Omni MTG Sync Tool, v2018-06-28"
 
   val version = "2"
@@ -57,8 +53,7 @@ class MainController(propFactory: PropertyFactory) {
 
   var backupFirst = true
 
-  def insertFromClip(mode: String): Unit = {
-    val data = String.valueOf(Toolkit.getDefaultToolkit.getSystemClipboard.getData(DataFlavor.stringFlavor))
+  def insertFromClip(mode: String, data: String): Unit = {
     mode match {
       case "mkm" =>
         val p: Pattern = Pattern.compile(".*App token\\s*(.*)\\s+App secret\\s*(.*)\\s+Access token\\s*(.*)\\s+Access token secret\\s*(.*)\\s*.*?")
@@ -145,8 +140,8 @@ class MainController(propFactory: PropertyFactory) {
     output.setValue(outputPrefix() + body)
     val res = new SnapConnector().call(snapLoginEndpoint, "POST", body = body)
     output.setValue(outputPrefix() + res)
-    val json: JsonStructure = fromJson(res)
-    snapToken.setValue(json.asJsonObject.getString("token"))
+    val json = new Gson().fromJson(res, classOf[Token])
+    snapToken.setValue(json.token)
   }
 
   def stop(): Unit = {
@@ -154,42 +149,37 @@ class MainController(propFactory: PropertyFactory) {
   }
 
   def openLink(url: String): Unit = {
-    try {
-      if (Desktop.isDesktopSupported) {
-        val desktop: Desktop = Desktop.getDesktop
-        if (desktop.isSupported(Desktop.Action.BROWSE)) {
-          desktop.browse(new URI(url))
-        }
-      }
-    } catch {
-      case e: Exception => handleEx(e)
-    }
+    nativeProvider.openLink(url)
   }
 
   def run(): Thread = {
-    val t = new Thread(() =>
-      while (!aborted.getValue)
-        if (running.getValue) {
-          nextSync.set(0)
-          try {
-            sync
-          } catch {
-            case e: Exception => handleEx(e)
-          }
-
-          val seconds = interval.getValue.intValue
-          for (x <- 1.to(seconds)) {
-            if (seconds == interval.getValue.intValue) { // abort wait if changed during wait
-              nextSync.set(seconds - x)
-              Thread.sleep(1000)
-            } else {
-              Thread.sleep(10)
+    val t = new Thread(new Runnable {
+      override def run(): Unit = {
+        while (!aborted.getValue) {
+          if (running.getValue) {
+            nextSync.set(0)
+            try {
+              sync
+            } catch {
+              case e: Exception => handleEx(e)
             }
+
+            val seconds = interval.getValue.intValue
+            for (x <- 1.to(seconds)) {
+              if (seconds == interval.getValue.intValue) { // abort wait if changed during wait
+                nextSync.set(seconds - x)
+                Thread.sleep(1000)
+              } else {
+                Thread.sleep(10)
+              }
+            }
+          } else {
+            Thread.sleep(1000)
           }
-        } else {
-          Thread.sleep(1000)
         }
-    )
+
+      }
+    })
     t.start()
     t
   }
@@ -256,10 +246,6 @@ class MainController(propFactory: PropertyFactory) {
     new Date() + "\n"
   }
 
-  def asJsonArray(structure: JsonStructure): Array[JsonValue] = {
-    structure.asJsonArray.toArray(new Array[JsonValue](0))
-  }
-
   def loadSnapChangedAndDeleteFromStock(info: StringBuilder): StringBuilder = {
     info.append(outputPrefix() + "• Snapcardster to MKM, changes at MKM:\n")
     val json = loadChangedFromSnap()
@@ -321,21 +307,7 @@ class MainController(propFactory: PropertyFactory) {
   }
 
   def getChangeItems(json: String): Array[SellerDataChanged] = {
-    val structure = fromJson(json)
-    val res = asJsonArray(structure).map { x =>
-      val obj = x.asJsonObject
-      val typeValue = obj.getString("type")
-      val info = Try(CsvFormat.parse(obj.getJsonObject("info"))).toOption
-      val collectionId = Try(obj.getJsonNumber("collectionId").longValue).toOption
-      val externalId = Try(obj.getJsonNumber("externalId").longValue).toOption
-      SellerDataChanged(
-        typeValue,
-        externalId,
-        collectionId,
-        info
-      )
-    }
-    res
+    new Gson().fromJson(json, classOf[Array[SellerDataChanged]])
   }
 
   def handleEx(e: Throwable, obj: Any = null): Unit = {
@@ -357,44 +329,14 @@ class MainController(propFactory: PropertyFactory) {
   }
 
   def postToSnap(csv: String): String = {
-    val map = Map("fileName" -> "mkmStock.csv", "fileContent" -> csv)
-    val body = jsonFromMap(map)
-
+    val body = new Gson().toJson(MKMCsv("mkmStock.csv", csv))
     val res = new SnapConnector().call(snapCsvEndpoint, "POST", getAuth, body)
     res
-  }
-
-  // https://stackoverflow.com/a/42106801/773842
-  /* def process(script: String, input: String): AnyRef = {
-    val engine: ScriptEngine = new ScriptEngineManager().getEngineByName("nashorn")
-    engine.eval(script)
-    val invocable: Invocable = engine.asInstanceOf[Invocable]
-    val body = invocable.invokeFunction("fun", input)
-    body
-  } */
-
-  def jsonFromMap(map: Map[String, Any]): String = {
-    val writer = new StringWriter()
-    val hashMap = new util.HashMap[String, AnyRef]
-    for ((k, v) <- map) {
-      hashMap.put(k, v.asInstanceOf[AnyRef])
-    }
-    Json.createWriter(writer).write(Json.createObjectBuilder(hashMap).build)
-    writer.toString
   }
 
   def loadChangedFromSnap(): String = {
     val res = new SnapConnector().call(snapChangedEndpoint, "GET", getAuth)
     res
-  }
-
-  def fromJson(str: String): JsonStructure = {
-    try {
-      Json.createReader(new StringReader(str)).read
-    } catch {
-      case e: Exception =>
-        sys.error("Error parsing JSON " + e + "\nJSON: " + str)
-    }
   }
 
   def getAuth: String = {
@@ -405,8 +347,10 @@ class MainController(propFactory: PropertyFactory) {
     val mkm = getMkm
     val hasOutput = true
     if (mkm.request(mkmStockFileEndpoint, "GET", null, null, hasOutput)) {
-      val obj = Json.createReader(new StringReader(mkm.responseContent)).readObject
-      val result = obj.getString("stock")
+
+      case class MKMSomething(stock: String)
+      val obj = new Gson().fromJson(mkm.responseContent(), classOf[MKMSomething])
+      val result = obj.stock
 
       // get string content from base64'd gzip
       val arr: Array[Byte] = Base64.getDecoder.decode(result)
@@ -576,7 +520,7 @@ class MainController(propFactory: PropertyFactory) {
     val buf = new ListBuffer[SellerDataChanged]
     buf.append(entries: _*)
 
-    val items: Seq[Map[String, Any]] = lst.flatMap { x =>
+    val items: Seq[ImportConfirmation] = lst.flatMap { x =>
       val xs = xmlList(x.getChildNodes)
       val success = java.lang.Boolean.parseBoolean(xs.find(_.getNodeName == "success").get.getTextContent)
       val message = xs.find(_.getNodeName == "message").map(_.getTextContent)
@@ -610,32 +554,19 @@ class MainController(propFactory: PropertyFactory) {
           None
         } else {
           if (message.isDefined) {
-            Some(Map(
-              "info" -> message.get,
-              "collectionId" -> collId,
-              "successful" -> success,
-              "added" -> added
-            ))
+            Some(ImportConfirmation(collId, success, added, message.get))
           } else {
-            Some(Map(
-              "collectionId" -> collId,
-              "successful" -> success,
-              "added" -> added
-            ))
+            Some(ImportConfirmation(collId, success, added, null))
           }
         }
       mapEntry
     }
 
     // If there are entries left without a matching item, they got a new articleId and must be removed and (in the next sync) new inserted to snapcardster
-    val needToRemove: Seq[Map[String, Any]] = (if (added) entries.filter(e => !items.exists(i => i.getOrElse("collectionId", 0).toString == e.collectionId.getOrElse(-1).toString)) else Nil).map { x =>
-      Map("collectionId" -> x.collectionId.getOrElse(-1),
-        "successful" -> false,
-        "added" -> added,
-        "info" -> "needToRemoveFromSnapcardster")
+    val needToRemove: Seq[ImportConfirmation] = (if (added) entries.filter(e => !items.exists(i => i.collectionId == e.collectionId.getOrElse(-1))) else Nil).map { x =>
+      ImportConfirmation(x.collectionId.getOrElse(-1), successful = false, added = added, "needToRemoveFromSnapcardster")
     }
 
-    val body = "[" + (items ++ needToRemove).map(a => jsonFromMap(a)).mkString(", ") + "]"
-    body
+    new Gson().toJson(items ++ needToRemove)
   }
 }

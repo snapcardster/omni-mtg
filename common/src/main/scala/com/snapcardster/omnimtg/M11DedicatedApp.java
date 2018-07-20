@@ -1,8 +1,9 @@
 package com.snapcardster.omnimtg;
 
+import org.apache.commons.codec.binary.Base64;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.bind.DatatypeConverter;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -117,7 +118,7 @@ public class M11DedicatedApp {
             SecretKeySpec secret = new SecretKeySpec(signingKey.getBytes(), mac.getAlgorithm());
             mac.init(secret);
             byte[] digest = mac.doFinal(baseString.getBytes());
-            String oauth_signature = DatatypeConverter.printBase64Binary(digest);    //Base64.encode(digest) ;
+            String oauth_signature = Base64.encodeBase64String(digest);
 
             String authorizationProperty =
                     "OAuth realm=\"" + realm + "\", " +

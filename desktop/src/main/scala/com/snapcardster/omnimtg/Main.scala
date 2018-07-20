@@ -1,5 +1,7 @@
 package com.snapcardster.omnimtg
 
+import java.awt.Toolkit
+import java.awt.datatransfer.DataFlavor
 import java.io.ByteArrayInputStream
 import java.util.Base64
 
@@ -23,7 +25,7 @@ object Main {
 }
 
 class MainGUI extends Application {
-  val controller: MainController = new MainController(JavaFXPropertyFactory)
+  val controller: MainController = new MainController(JavaFXPropertyFactory, DesktopFunctionProvider)
   val buttonCss = "--button-type: RAISED; -fx-background-color: blue; -fx-text-fill: white;"
   val button2Css = "--button-type: FLAT; -fx-background-color: green; -fx-text-fill: white;"
   var paneCss: String = "-fx-background-color:WHITE;-fx-padding:40;"
@@ -197,7 +199,8 @@ class MainGUI extends Application {
   def pasteButton(mode: String): Button = {
     set(new JFXButton("📋 Paste from Clipboard")) { x =>
       x.setStyle(button2Css)
-      x.setOnMouseClicked(_ => controller.insertFromClip(mode))
+      val data = String.valueOf(Toolkit.getDefaultToolkit.getSystemClipboard.getData(DataFlavor.stringFlavor))
+      x.setOnMouseClicked(_ => controller.insertFromClip(mode, data))
     }
   }
 

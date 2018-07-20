@@ -39,3 +39,6 @@ project/project
 
 *.class
 *.log
+ target/
+desktop/target/
+desktop/project/target
