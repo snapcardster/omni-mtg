@@ -1,0 +1,47 @@
+Manifest-Version: 1.0
+Export-Package: javax.xml.bind;uses:="javax.xml.validation,javax.xml.n
+ amespace,javax.xml.datatype,javax.xml.transform,javax.xml.bind.annota
+ tion,javax.xml.transform.stream,org.w3c.dom,javax.xml.bind.attachment
+ ,javax.xml.stream,javax.xml.bind.annotation.adapters,org.xml.sax";ver
+ sion="2.2.11",javax.xml.bind.annotation;uses:="javax.xml.transform,ja
+ vax.xml.bind,javax.xml.parsers,javax.xml.transform.dom,org.w3c.dom";v
+ ersion="2.2.11",javax.xml.bind.annotation.adapters;uses:="javax.xml.b
+ ind";version="2.2.11",javax.xml.bind.attachment;uses:="javax.activati
+ on";version="2.2.11",javax.xml.bind.helpers;uses:="javax.xml.bind.ann
+ otation.adapters,javax.xml.transform.dom,org.w3c.dom,org.xml.sax,java
+ x.xml.bind.attachment,javax.xml.stream,javax.xml.transform,javax.xml.
+ transform.stream,javax.xml.validation,javax.xml.transform.sax,javax.x
+ ml.bind,javax.xml.parsers";version="2.2.11",javax.xml.bind.util;uses:
+ ="javax.xml.transform.sax,javax.xml.bind,org.xml.sax,org.xml.sax.ext,
+ org.xml.sax.helpers";version="2.2.11"
+Specification-Vendor: Oracle Corporation
+Built-By: mghudson
+Tool: Bnd-1.50.0
+Bundle-Name: jaxb-api
+Created-By: Apache Maven Bundle Plugin
+Bundle-Vendor: Oracle Corporation
+DynamicImport-Package: org.glassfish.hk2.osgiresourcelocator
+Bundle-Version: 2.2.11
+Build-Jdk: 1.6.0_45
+Bnd-LastModified: 1378462261695
+Implementation-Build-Id: tags/jaxb-api-2.2.11-1631, 2013-09-06T10:10:5
+ 8+0000
+Bundle-ManifestVersion: 2
+Specification-Title: Java Architecture for XML Binding
+Bundle-License: https://glassfish.java.net/public/CDDL+GPL_1_1.html, h
+ ttps://glassfish.java.net/public/CDDL+GPL_1_1.html
+Bundle-Description: JAXB (JSR 222) API
+Bundle-SymbolicName: jaxb-api
+Bundle-DocURL: http://www.oracle.com/
+Import-Package: javax.activation,javax.xml.bind;version="2.2.11",javax
+ .xml.bind.annotation;version="2.2.11",javax.xml.bind.annotation.adapt
+ ers;version="2.2.11",javax.xml.bind.attachment;version="2.2.11",javax
+ .xml.bind.helpers;version="2.2.11",javax.xml.bind.util;version="2.2.1
+ 1",javax.xml.datatype,javax.xml.namespace,javax.xml.parsers,javax.xml
+ .stream,javax.xml.transform,javax.xml.transform.dom,javax.xml.transfo
+ rm.sax,javax.xml.transform.stream,javax.xml.validation,org.w3c.dom,or
+ g.xml.sax,org.xml.sax.ext,org.xml.sax.helpers
+Specification-Version: 2.2.11
+Extension-Name: javax.xml.bind
+Archiver-Version: Plexus Archiver
+
