@@ -19,7 +19,6 @@ tags
 .*.swp
 .*.swo
 
-app
 dist
 target/.history
 target/streams
@@ -39,6 +38,6 @@ project/project
 
 *.class
 *.log
- target/
+target/
 desktop/target/
 desktop/project/target
