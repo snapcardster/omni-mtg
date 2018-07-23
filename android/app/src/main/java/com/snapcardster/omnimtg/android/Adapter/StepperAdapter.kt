@@ -45,6 +45,10 @@ class StepperAdapter(fm: FragmentManager, context: Context) : AbstractFragmentSt
                     3 -> "Sync"
                     else -> "Welcome"
                 }) //can be a CharSequence instead
+                .setEndButtonLabel(when (position) {
+                    3 -> "Start Sync"
+                    else -> "Continue"
+                })
                 .create()
     }
 }
