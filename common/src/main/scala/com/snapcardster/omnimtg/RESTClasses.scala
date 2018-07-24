@@ -16,6 +16,8 @@ case class Language(
 
 case class Token(token: String)
 
+case class MKMSomething(stock: String)
+
 case class SellerDataChanged(
                               `type`: String,
                               externalId: Option[Long],
@@ -23,7 +25,7 @@ case class SellerDataChanged(
                               info: Option[CsvFormat]
                             )
 
-case class MKMCsv(filename: String, fileContent: String)
+case class MKMCsv(fileName: String, fileContent: String)
 
 case class ImportConfirmation(collectionId: Long, successful: Boolean, added: Boolean, info: String)
 

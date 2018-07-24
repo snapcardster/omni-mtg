@@ -7,7 +7,7 @@ public interface PropertyFactory {
 
     StringProperty newStringProperty(String initialValue);
 
-    IntegerProperty newIntegerProperty(Integer initialValue);
+    StringProperty newStringProperty(String name, String initialValue, Properties prop);
 
-    Object newListener(Properties prop, String name);
+    IntegerProperty newIntegerProperty(Integer initialValue);
 }

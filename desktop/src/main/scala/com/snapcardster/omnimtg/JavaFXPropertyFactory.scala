@@ -14,13 +14,15 @@ object JavaFXPropertyFactory extends PropertyFactory {
 
   override def newIntegerProperty(initialValue: Integer): IntegerProperty = new JavaFXIntegerProperty(initialValue)
 
-  override def newListener(prop: Properties, name: String): AnyRef = {
+  override def newStringProperty(name: String, value: String, prop: Properties): StringProperty = {
+    val stringProp = newStringProperty(value)
     val l = new ChangeListener[Any] {
       def changed(observable: ObservableValue[_], oldValue: Any, newValue: Any): Unit = {
         prop.put(name, String.valueOf(newValue))
       }
     }
-    l
+    stringProp.addListener(l)
+    stringProp
   }
 }
 
@@ -69,6 +71,4 @@ class JavaFXIntegerProperty extends IntegerProperty {
   override def getValue: Integer = nativeBase.getValue
 
   override def getNativeBase: SimpleIntegerProperty = nativeBase
-
-  override def set(value: Integer): Unit = nativeBase.set(value)
 }

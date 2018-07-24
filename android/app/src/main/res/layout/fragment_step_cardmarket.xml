@@ -94,6 +94,7 @@
                         android:id="@+id/card_cardmarket_details_apptoken"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:inputType="text"
                         android:hint="App Token" />
 
                 </android.support.design.widget.TextInputLayout>
@@ -111,6 +112,7 @@
                         android:id="@+id/card_cardmarket_details_appsecret"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:inputType="text"
                         android:hint="App Secret" />
 
                 </android.support.design.widget.TextInputLayout>
@@ -128,6 +130,7 @@
                         android:id="@+id/card_cardmarket_details_accesstoken"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:inputType="text"
                         android:hint="Access Token" />
 
                 </android.support.design.widget.TextInputLayout>
@@ -144,6 +147,8 @@
                         android:id="@+id/card_cardmarket_details_accesstokensecret"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:inputType="text"
+                        android:imeOptions="actionDone"
                         android:hint="Access Token Secret" />
 
                 </android.support.design.widget.TextInputLayout>

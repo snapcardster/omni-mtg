@@ -10,14 +10,14 @@ import com.stepstone.stepper.adapter.StepAdapter
 
 class MainActivity : AppCompatActivity() {
 
-    private var mStepperLayout: StepperLayout? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        //val controller = MainControllerWrapper()
-
         stepperLayout.setAdapter(StepperAdapter(supportFragmentManager,this))
+    }
+
+    companion object {
+        val controller = MainControllerWrapper()
     }
 }

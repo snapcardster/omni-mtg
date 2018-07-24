@@ -1,39 +1,70 @@
 package com.snapcardster.omnimtg.android.Fragments
 
-import com.stepstone.stepper.VerificationError
 import android.os.Bundle
-import android.support.v4.app.Fragment
-import android.view.ViewGroup
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import com.snapcardster.omnimtg.android.MainActivity.Companion.controller
 import com.snapcardster.omnimtg.android.R
-import com.stepstone.stepper.Step
+import com.stepstone.stepper.VerificationError
+import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.fragment_step_snapcardster.view.*
+import org.jetbrains.anko.doAsync
+import org.jetbrains.anko.support.v4.act
+import org.jetbrains.anko.support.v4.toast
+import org.jetbrains.anko.uiThread
 
 
 class StepFragmentSnapcardster : StepFragment() {
 
+    var position = -1
+
     override fun onCreateView(inflater: LayoutInflater?, container: ViewGroup?, savedInstanceState: Bundle?): View? {
 
         //initialize your UI
+        controller.snapUser.value = "Malte"
+        controller.snapPassword.value = "test1337"
+        val view = inflater!!.inflate(R.layout.fragment_step_snapcardster, container, false)
+        bind(controller.snapUser,view.card_snapcardster_login_user, listOf(controller.snapToken))
+        bind(controller.snapPassword,view.card_snapcardster_login_password)
 
-        return inflater!!.inflate(R.layout.fragment_step_snapcardster, container, false)
+        view.card_snapcardster_login_btn.setOnClickListener {
+            view.card_snapcardster_login_progress.visibility = View.VISIBLE
+            view.card_snapcardster_login_btn.visibility = View.GONE
+            doAsync{
+                controller.loginSnap()
+                uiThread {
+                    view.card_snapcardster_login_progress.visibility = View.GONE
+                    view.card_snapcardster_login_btn.visibility = View.VISIBLE
+                    if (controller.snapToken.value.isNullOrBlank()){
+                        toast("Login failed, please check username and password")
+                    }else{
+                        view.card_snapcardster_login_btn.text = "Login with different Account"
+                        if (activity.stepperLayout.currentStepPosition == position) {
+                            activity.stepperLayout.proceed()
+                        }
+                    }
+                }
+            }
+
+        }
+
+        return view
     }
 
     override fun verifyStep(): VerificationError? {
-        //return null if the user can go to the next step, create a new VerificationError instance otherwise
-        return null
+        return if (!controller.snapToken.value.isNullOrBlank()){
+            null
+        }else{
+            VerificationError("You need to login")
+        }
     }
 
     override fun onSelected() {
-        //update UI when selected
-    }
-
-    override fun onError(error: VerificationError) {
-        //handle error inside of the fragment, e.g. show error on EditText
-    }
-
-    companion object {
-        fun newInstance() = StepFragmentSnapcardster()
-        val tabTitle = "Explanation"
+        position = activity.stepperLayout.currentStepPosition
+        Log.d("StepSnapcardster","position: " + position)
     }
 }

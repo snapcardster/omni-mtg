@@ -51,7 +51,7 @@
                     android:layout_marginBottom="16dp">
 
                     <android.support.design.widget.TextInputEditText
-                        android:id="@+id/card_cardmarket_details_apptoken"
+                        android:id="@+id/card_snapcardster_login_user"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textEmailAddress"
@@ -69,13 +69,31 @@
                     android:layout_marginBottom="16dp">
 
                     <android.support.design.widget.TextInputEditText
-                        android:id="@+id/card_cardmarket_details_appsecret"
+                        android:id="@+id/card_snapcardster_login_password"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textPassword"
+                        android:imeOptions="actionDone"
                         android:hint="Password" />
 
                 </android.support.design.widget.TextInputLayout>
+
+                <ProgressBar
+                    android:id="@+id/card_snapcardster_login_progress"
+                    style="?android:attr/progressBarStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"/>
+
+                <Button
+                    android:id="@+id/card_snapcardster_login_btn"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:text="Login"
+                    android:textColor="@color/colorPrimary"
+                    android:textSize="14sp" />
 
             </LinearLayout>
 

@@ -2,7 +2,7 @@ import Dependencies._
 //import AssemblyKeys._
 
 lazy val commonSettings = List(
-  organization := "com.example",
+  organization := "com.snapcardster",
   scalaVersion := "2.12.5",
   version := "0.1.0-SNAPSHOT"
 )
@@ -21,9 +21,11 @@ lazy val root = (project in file(".")).
   )
 
 
+// Select at least java 9 in intellij settings
 // scalacOptions += "-target:jvm-1.9"
 // javacOptions ++= Seq("-source", "1.9", "-target", "1.9")
 
+// Need to add this directory as source root in intellij settings
 //scalaSource in Compile := file("../common/src/main/scala")
 
 // Material UI Components in Java FX

@@ -57,9 +57,9 @@ class MainGUI extends Application {
   override def start(primaryStage: Stage): Unit = {
     primaryStage.setOnCloseRequest { _ =>
       // x.consume()
-      controller.output.setValue("Closing...")
-      controller.aborted.setValue(true)
-      controller.thread.interrupt()
+      controller.getOutput.setValue("Closing...")
+      controller.getAborted.setValue(true)
+      controller.getThread.interrupt()
     }
     val pane = getStage
 
@@ -79,29 +79,29 @@ class MainGUI extends Application {
     grid.setHgap(20.0)
     grid.add(new Label("🎚 Sync Options"), 0, 0)
     grid.add(
-      set(new JFXSlider(20, 43600, controller.interval.getValue.doubleValue))(linkTo(_, controller.interval.getNativeBase.asInstanceOf[SimpleIntegerProperty])),
+      set(new JFXSlider(20, 43600, controller.getInterval.getValue.doubleValue))(linkTo(_, controller.getInterval.getNativeBase.asInstanceOf[SimpleIntegerProperty])),
       0, 1, 2, 1
     )
     grid.add(new Label("🕓 Sync interval in seconds"), 0, 2)
     grid.add(set(new JFXTextField) { x =>
-      linkTo(x, controller.interval.getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
+      linkTo(x, controller.getInterval.getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
       x.setDisable(true)
     }, 1, 2)
     grid.add(new Label("📆 Resulting number of syncs per day"), 0, 3)
     grid.add(set(new JFXTextField) { x =>
-      linkTo(x, new SimpleIntegerProperty(1440 * 60).divide(controller.interval.getNativeBase.asInstanceOf[SimpleIntegerProperty]).asString())
+      linkTo(x, new SimpleIntegerProperty(1440 * 60).divide(controller.getInterval.getNativeBase.asInstanceOf[SimpleIntegerProperty]).asString())
       x.setDisable(true)
     }, 1, 3)
     grid.add(new Label("📆 Next sync in"), 0, 4)
     grid.add(set(new JFXTextField) { x =>
-      linkTo(x, controller.nextSync.getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
+      linkTo(x, controller.getnextSync().getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
       x.setDisable(true)
     }, 1, 4)
 
     val fields = List(
-      controller.mkmAppToken.getNativeBase.asInstanceOf[SimpleStringProperty], controller.mkmAppSecret.getNativeBase.asInstanceOf[SimpleStringProperty], controller.mkmAccessToken.getNativeBase.asInstanceOf[SimpleStringProperty],
-      controller.mkmAccessTokenSecret.getNativeBase.asInstanceOf[SimpleStringProperty],
-      controller.snapUser.getNativeBase.asInstanceOf[SimpleStringProperty], controller.snapToken.getNativeBase.asInstanceOf[SimpleStringProperty]
+      controller.getMkmAppToken.getNativeBase.asInstanceOf[SimpleStringProperty], controller.getMkmAppSecret.getNativeBase.asInstanceOf[SimpleStringProperty], controller.getMkmAccessToken.getNativeBase.asInstanceOf[SimpleStringProperty],
+      controller.getMkmAccessTokenSecret.getNativeBase.asInstanceOf[SimpleStringProperty],
+      controller.getSnapUser.getNativeBase.asInstanceOf[SimpleStringProperty], controller.getSnapToken.getNativeBase.asInstanceOf[SimpleStringProperty]
     )
 
     val startButton = set(new JFXButton("🔄 Start Sync")) { x =>
@@ -109,9 +109,9 @@ class MainGUI extends Application {
 
       x.disableProperty.bind(fields.map(_.isEmpty).reduce(_ or _))
       x.setOnMouseClicked { _ =>
-        controller.running.setValue(!controller.running.getValue)
+        controller.getRunning.setValue(!controller.getRunning.getValue)
         val txt =
-          if (controller.running.getValue)
+          if (controller.getRunning.getValue)
             "▶ Running, click to stop"
           else
             "⏸ Stopped, click to start"
@@ -120,7 +120,7 @@ class MainGUI extends Application {
     }
 
     if (!fields.map(_.isEmpty).reduce(_ or _).get()) {
-      controller.running.setValue(true)
+      controller.getRunning.setValue(true)
       startButton.setText("▶ Running, click to stop")
     }
 
@@ -129,7 +129,7 @@ class MainGUI extends Application {
       grid,
       new Label("📜 Output"),
       set(new TextArea("...")) { x =>
-        linkTo(x, controller.output.getNativeBase.asInstanceOf[SimpleStringProperty])
+        linkTo(x, controller.getOutput.getNativeBase.asInstanceOf[SimpleStringProperty])
         x.setEditable(false)
         x.setPrefWidth(640)
         x.setPrefHeight(290)
@@ -142,19 +142,19 @@ class MainGUI extends Application {
       pasteButton("mkm"),
       set(new JFXTextField) { x =>
         x.setPromptText("Enter MKM App Token")
-        linkTo(x, controller.mkmAppToken.getNativeBase.asInstanceOf[SimpleStringProperty])
+        linkTo(x, controller.getMkmAppToken.getNativeBase.asInstanceOf[SimpleStringProperty])
       },
       set(new JFXTextField) { x =>
-        linkTo(x, controller.mkmAppSecret.getNativeBase.asInstanceOf[SimpleStringProperty])
+        linkTo(x, controller.getMkmAppSecret.getNativeBase.asInstanceOf[SimpleStringProperty])
         x.setPromptText("Enter MKM App Secret")
       },
       set(new JFXTextField) { x =>
         x.setPromptText("Enter MKM Access Token")
-        linkTo(x, controller.mkmAccessToken.getNativeBase.asInstanceOf[SimpleStringProperty])
+        linkTo(x, controller.getMkmAccessToken.getNativeBase.asInstanceOf[SimpleStringProperty])
       },
       set(new JFXTextField) { x =>
         x.setPromptText("Enter MKM Access Token Secret")
-        linkTo(x, controller.mkmAccessTokenSecret.getNativeBase.asInstanceOf[SimpleStringProperty])
+        linkTo(x, controller.getMkmAccessTokenSecret.getNativeBase.asInstanceOf[SimpleStringProperty])
       },
       saveBtn()
     )
@@ -164,15 +164,15 @@ class MainGUI extends Application {
       //set(new Hyperlink("https://snapcardster.com/app"))(_.setOnMouseClicked(x => handleClick(x))),
       //pasteButton("snap"),
       set(new JFXTextField) { x =>
-        linkTo(x, controller.snapUser.getNativeBase.asInstanceOf[SimpleStringProperty])
+        linkTo(x, controller.getSnapUser.getNativeBase.asInstanceOf[SimpleStringProperty])
         x.setPromptText("Enter Snapcardster User Id")
       },
       set(new JFXTextField) { x =>
-        linkTo(x, controller.snapPassword.getNativeBase.asInstanceOf[SimpleStringProperty])
+        linkTo(x, controller.getSnapPassword.getNativeBase.asInstanceOf[SimpleStringProperty])
         x.setPromptText("Enter Snapcardster Password")
       },
       set(new JFXTextField) { x =>
-        linkTo(x, controller.snapToken.getNativeBase.asInstanceOf[SimpleStringProperty])
+        linkTo(x, controller.getSnapToken.getNativeBase.asInstanceOf[SimpleStringProperty])
         x.setPromptText("Snapcardster Token")
       },
       loginAndGetTokenBtn(),

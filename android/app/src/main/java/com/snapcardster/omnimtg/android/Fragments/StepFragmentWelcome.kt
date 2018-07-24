@@ -30,13 +30,4 @@ class StepFragmentWelcome : StepFragment() {
     override fun onSelected() {
         //update UI when selected
     }
-
-    override fun onError(error: VerificationError) {
-        //handle error inside of the fragment, e.g. show error on EditText
-    }
-
-    companion object {
-        fun newInstance() = StepFragmentWelcome()
-
-    }
 }

@@ -7,14 +7,14 @@ import java.util.regex._
 import java.util.zip._
 import java.util.{Base64, Date, Properties}
 
-import com.google.gson.Gson
+import com.google.gson.{Gson, GsonBuilder}
 import com.snapcardster.omnimtg.Interfaces._
 import javax.xml.parsers.DocumentBuilderFactory
 import org.w3c.dom.{Document, Node, NodeList}
 
 import scala.collection.mutable.ListBuffer
 
-class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) {
+class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
   val title = "Omni MTG Sync Tool, v2018-06-28"
 
   val version = "2"
@@ -32,24 +32,24 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
   val mkmStockFileEndpoint: String = mkmBaseUrl + "/output.json/stock/file"
 
-  var thread: Thread = _
-  val prop: Properties = new Properties
-  val configPath: Path = Paths.get("secret.properties")
-  val backupPath: Path = Paths.get("mkm_backup_" + System.currentTimeMillis() + ".csv")
-  var aborted: BooleanProperty = propFactory.newBooleanProperty(false)
-  var running: BooleanProperty = propFactory.newBooleanProperty(false)
+  private var thread: Thread = _
+  private val prop: Properties = new Properties
+  private val configPath: Path = Paths.get("secret.properties")
+  private val backupPath: Path = Paths.get("mkm_backup_" + System.currentTimeMillis() + ".csv")
+  private var aborted: BooleanProperty = propFactory.newBooleanProperty(false)
+  private var running: BooleanProperty = propFactory.newBooleanProperty(false)
 
-  val mkmAppToken: StringProperty = newProp("mkmApp", "")
-  val mkmAppSecret: StringProperty = newProp("mkmAppSecret", "")
-  val mkmAccessToken: StringProperty = newProp("mkmAccessToken", "")
-  val mkmAccessTokenSecret: StringProperty = newProp("mkmAccessTokenSecret", "")
-  val snapUser: StringProperty = newProp("snapUser", "")
-  val snapPassword: StringProperty = newProp("snapPassword", "")
-  val snapToken: StringProperty = newProp("snapToken", "")
+  private val mkmAppToken: StringProperty = propFactory.newStringProperty("mkmApp", "", prop)
+  private val mkmAppSecret: StringProperty = propFactory.newStringProperty("mkmAppSecret", "", prop)
+  private val mkmAccessToken: StringProperty = propFactory.newStringProperty("mkmAccessToken", "", prop)
+  private val mkmAccessTokenSecret: StringProperty = propFactory.newStringProperty("mkmAccessTokenSecret", "", prop)
+  private val snapUser: StringProperty = propFactory.newStringProperty("snapUser", "", prop)
+  private val snapPassword: StringProperty = propFactory.newStringProperty("snapPassword", "", prop)
+  private val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
 
-  val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
-  val interval: IntegerProperty = propFactory.newIntegerProperty(180)
-  val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
+  private val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
+  private val interval: IntegerProperty = propFactory.newIntegerProperty(180)
+  private val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
 
   var backupFirst = true
 
@@ -115,13 +115,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     thread = run()
   }
 
-  def newProp(name: String, value: String): StringProperty = {
-    val stringProp = propFactory.newStringProperty(value)
-    val l = propFactory.newListener(prop, name)
-    stringProp.addListener(l)
-    stringProp
-  }
-
   def save(): Unit = {
     var str: OutputStream = new ByteArrayOutputStream()
     try {
@@ -139,9 +132,17 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val body = s"""{\"userId\":\"${snapUser.getValue}\",\"password\":\"${snapPassword.getValue}\"}"""
     output.setValue(outputPrefix() + body)
     val res = new SnapConnector().call(snapLoginEndpoint, "POST", body = body)
-    output.setValue(outputPrefix() + res)
-    val json = new Gson().fromJson(res, classOf[Token])
-    snapToken.setValue(json.token)
+    if (res == null) {
+      snapToken.setValue("")
+    } else {
+      output.setValue(outputPrefix() + res)
+      val json = new Gson().fromJson(res, classOf[Token])
+      if (json == null) {
+        snapToken.setValue("")
+      } else {
+        snapToken.setValue(json.token)
+      }
+    }
   }
 
   def stop(): Unit = {
@@ -157,7 +158,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       override def run(): Unit = {
         while (!aborted.getValue) {
           if (running.getValue) {
-            nextSync.set(0)
+            nextSync.setValue(0)
             try {
               sync
             } catch {
@@ -167,7 +168,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
             val seconds = interval.getValue.intValue
             for (x <- 1.to(seconds)) {
               if (seconds == interval.getValue.intValue) { // abort wait if changed during wait
-                nextSync.set(seconds - x)
+                nextSync.setValue(seconds - x)
                 Thread.sleep(1000)
               } else {
                 Thread.sleep(10)
@@ -348,8 +349,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val hasOutput = true
     if (mkm.request(mkmStockFileEndpoint, "GET", null, null, hasOutput)) {
 
-      case class MKMSomething(stock: String)
+      val builder = new GsonBuilder
       val obj = new Gson().fromJson(mkm.responseContent(), classOf[MKMSomething])
+      System.out.println(obj.toString)
       val result = obj.stock
 
       // get string content from base64'd gzip
@@ -569,4 +571,32 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     new Gson().toJson(items ++ needToRemove)
   }
+
+  override def getThread: Thread = thread
+
+  override def getProperties: Properties = prop
+
+  override def getAborted: BooleanProperty = aborted
+
+  override def getRunning: BooleanProperty = running
+
+  override def getMkmAppToken: StringProperty = mkmAppToken
+
+  override def getMkmAppSecret: StringProperty = mkmAppSecret
+
+  override def getMkmAccessToken: StringProperty = mkmAccessToken
+
+  override def getMkmAccessTokenSecret: StringProperty = mkmAccessTokenSecret
+
+  override def getSnapUser: StringProperty = snapUser
+
+  override def getSnapPassword: StringProperty = snapPassword
+
+  override def getSnapToken: StringProperty = snapToken
+
+  override def getOutput: StringProperty = output
+
+  override def getInterval: IntegerProperty = interval
+
+  override def getnextSync(): IntegerProperty = nextSync
 }
