@@ -61,6 +61,7 @@ class StepFragmentSnapcardster : StepFragment() {
     }
 
     override fun onSelected() {
+        position = activity.stepperLayout.currentStepPosition
         if (firstRun && !controller.snapToken.value.isNullOrBlank() && !controller.snapUser.value.isNullOrBlank()) {
             activity.stepperLayout.proceed()
         } else {
