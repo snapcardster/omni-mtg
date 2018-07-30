@@ -34,7 +34,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_margin="16dp"
-                        android:text="Explanation"
+                        android:text="@string/explanation"
                         android:textColor="@color/ms_black"
                         android:textSize="21sp" />
 
@@ -47,7 +47,7 @@
                         android:layout_marginTop="0dp"
                         android:layout_marginEnd="16dp"
                         android:layout_marginBottom="16dp"
-                        android:text="Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et no sea takimata sanctus est Lorem ipsum dolor sit amet." />
+                        android:text="@string/welcome_explanation" />
 
                 </LinearLayout>
 
@@ -72,7 +72,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_margin="16dp"
-                        android:text="Important Note"
+                        android:text="@string/important_note"
                         android:textColor="#d0301f"
                         android:textSize="21sp" />
 
@@ -85,7 +85,7 @@
                         android:layout_marginTop="0dp"
                         android:layout_marginEnd="16dp"
                         android:layout_marginBottom="16dp"
-                        android:text="Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et no sea takimata sanctus est Lorem ipsum dolor sit amet." />
+                        android:text="@string/welcome_note" />
 
                 </LinearLayout>
             </android.support.v7.widget.CardView>
@@ -116,7 +116,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_margin="16dp"
-                        android:text="About the Project"
+                        android:text="@string/about_the_project"
                         android:textColor="@color/ms_black"
                         android:textSize="21sp" />
 
@@ -129,7 +129,7 @@
                         android:layout_marginTop="0dp"
                         android:layout_marginEnd="16dp"
                         android:layout_marginBottom="16dp"
-                        android:text="Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et no sea takimata sanctus est Lorem ipsum dolor sit amet." />
+                        android:text="@string/welcome_about" />
 
                 </LinearLayout>
             </android.support.v7.widget.CardView>

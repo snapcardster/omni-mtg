@@ -4,6 +4,12 @@ import java.util.Properties;
 
 public interface MainControllerInterface {
 
+    void sync(Object nativeBase);
+
+    void save(Object nativeBase);
+
+    void readProperties(Object nativeBase);
+
     Thread getThread();
 
     Properties getProperties();
@@ -33,4 +39,8 @@ public interface MainControllerInterface {
     IntegerProperty getnextSync();
 
     void loginSnap();
+
+    void insertFromClip(String mode,String data);
+
+    void start(Object nativeBase);
 }

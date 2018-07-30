@@ -1,5 +1,7 @@
 package com.snapcardster.omnimtg.android;
 
+import android.content.Context;
+
 import com.snapcardster.omnimtg.Interfaces.BooleanProperty;
 import com.snapcardster.omnimtg.Interfaces.IntegerProperty;
 import com.snapcardster.omnimtg.Interfaces.MainControllerInterface;
@@ -9,32 +11,63 @@ import com.snapcardster.omnimtg.MainController;
 import java.util.Properties;
 
 public class MainControllerWrapper implements MainControllerInterface {
-    AndroidPropertyFactory propFactory = new AndroidPropertyFactory();
-    AndroidNativeFunctionProvider nativeProvider = new AndroidNativeFunctionProvider();
-    MainController controller = new MainController(propFactory, nativeProvider);
+    private AndroidPropertyFactory propFactory;
+    private AndroidNativeFunctionProvider nativeProvider;
+    private MainController controller;
+
+    MainControllerWrapper() {
+        propFactory = new AndroidPropertyFactory();
+        nativeProvider = new AndroidNativeFunctionProvider();
+        controller = new MainController(propFactory, nativeProvider);
+    }
 
     public void loginSnap() {
         controller.loginSnap();
     }
 
     @Override
+    public void insertFromClip(String mode, String data) {
+        controller.insertFromClip(mode, data);
+    }
+
+    @Override
+    public void start(Object nativeBase) {
+        controller.start(nativeBase);
+    }
+
+    @Override
+    public void sync(Object nativeBase) {
+        controller.sync(nativeBase);
+    }
+
+    @Override
+    public void save(Object nativeBase) {
+        controller.save(nativeBase);
+    }
+
+    @Override
+    public void readProperties(Object nativeBase) {
+        controller.readProperties(nativeBase);
+    }
+
+    @Override
     public Thread getThread() {
-        return null;
+        return controller.getThread();
     }
 
     @Override
     public Properties getProperties() {
-        return null;
+        return controller.getProperties();
     }
 
     @Override
     public BooleanProperty getAborted() {
-        return null;
+        return controller.getAborted();
     }
 
     @Override
     public BooleanProperty getRunning() {
-        return null;
+        return controller.getRunning();
     }
 
     @Override
@@ -74,16 +107,16 @@ public class MainControllerWrapper implements MainControllerInterface {
 
     @Override
     public StringProperty getOutput() {
-        return null;
+        return controller.getOutput();
     }
 
     @Override
     public IntegerProperty getInterval() {
-        return null;
+        return controller.getInterval();
     }
 
     @Override
     public IntegerProperty getnextSync() {
-        return null;
+        return controller.getnextSync();
     }
 }

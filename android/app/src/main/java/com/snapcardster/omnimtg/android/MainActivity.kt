@@ -4,9 +4,6 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import com.snapcardster.omnimtg.android.Adapter.StepperAdapter
 import kotlinx.android.synthetic.main.activity_main.*
-import com.stepstone.stepper.StepperLayout
-import com.stepstone.stepper.adapter.StepAdapter
-
 
 class MainActivity : AppCompatActivity() {
 
@@ -15,9 +12,12 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         stepperLayout.setAdapter(StepperAdapter(supportFragmentManager,this))
+
+        controller.readProperties(this)
     }
 
     companion object {
         val controller = MainControllerWrapper()
+        var firstRun = true
     }
 }

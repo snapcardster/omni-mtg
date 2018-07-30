@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">Omni MTG</string>
+    <string name="mkm_steps"><b>Step 1:</b> Open "My Account" at <a href="https://www.cardmarket.com/de/Magic/MainPage/showMyAccount">https://www.cardmarket.com/de/Magic/MainPage/showMyAccount</a>\n\n
+    <b>Step 2:</b> Scroll down to "App Details" and create a "Dedicated" App\n\n
+    <b>Step 3:</b> Copy all credentials (or the whole page) and paste them here</string>
+    <string name="welcome_explanation">Omni MTG is an Open Source Omni-Channel Solution for Magic: The Gathering. With this tool you can easily synchronise various marketplaces for Magic: The Gathering such as Cardmarket and Snapcardster by connecting the provided APIs</string>
+    <string name="explanation">Explanation</string>
+    <string name="important_note">Important Note</string>
+    <string name="welcome_note">Omni MTG does not share any token credentials with third-parties. We shall not be liable for damages, which are caused by sole fault of any person deployed by you when using this software. Use at your own risk.</string>
+    <string name="about_the_project">About the Project</string>
+    <string name="welcome_about">Open Source means, you can use this app free of charge and read its public source code.\n\nIf you found a bug or want to contribute to this project, write an email to: opensource@snapcardster.com or write an issue in the github repository:\n\n<a href="https://github.com/snapcardster/omni-mtg">https://github.com/snapcardster/omni-mtg</a>/</string>
 </resources>

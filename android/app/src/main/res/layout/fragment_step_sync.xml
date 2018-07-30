@@ -49,7 +49,7 @@
                     android:layout_marginTop="0dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
-                    android:max="1000"
+                    android:max="940"
                     android:progress="180" />
 
                 <TextView
@@ -60,7 +60,7 @@
                     android:layout_marginTop="0dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
-                    android:text="Sync every 180 seconds, 480 times per day" />
+                    android:text="" />
 
             </LinearLayout>
 
@@ -104,6 +104,7 @@
                     android:text="Send Feedback"
                     android:textColor="@color/colorPrimary"
                     android:textSize="14sp"
+                    android:visibility="gone"
                     card_view:layout_constraintEnd_toEndOf="parent"
                     card_view:layout_constraintTop_toTopOf="parent" />
 
@@ -116,7 +117,7 @@
                     android:layout_marginEnd="8dp"
                     android:layout_marginBottom="8dp"
                     android:background="#ededed"
-                    android:text="Added 2 Black Lotus (LEA) for 4242.00€ to Snapcardster"
+                    android:text=""
                     card_view:layout_constraintBottom_toBottomOf="parent"
                     card_view:layout_constraintEnd_toEndOf="parent"
                     card_view:layout_constraintStart_toStartOf="parent"

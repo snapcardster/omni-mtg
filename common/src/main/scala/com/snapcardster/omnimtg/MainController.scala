@@ -5,11 +5,12 @@ import java.nio.file._
 import java.util
 import java.util.regex._
 import java.util.zip._
-import java.util.{Base64, Date, Properties}
+import java.util.{Date, Properties}
 
 import com.google.gson.{Gson, GsonBuilder}
 import com.snapcardster.omnimtg.Interfaces._
 import javax.xml.parsers.DocumentBuilderFactory
+import org.apache.commons.lang.StringUtils
 import org.w3c.dom.{Document, Node, NodeList}
 
 import scala.collection.mutable.ListBuffer
@@ -21,7 +22,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   // TODO: change back to test after test
   // val snapBaseUrl: String = "https://api.snapcardster.com"
-  val snapBaseUrl: String = "https://test.snapcardster.com"
+  val snapBaseUrl: String = "https://dev.snapcardster.com" //"https://test.snapcardster.com"
   //val snapBaseUrl: String = "http://localhost:9000"
 
   val snapCsvEndpoint: String = snapBaseUrl + s"/importer/sellerdata/from/csv/$version"
@@ -34,8 +35,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   private var thread: Thread = _
   private val prop: Properties = new Properties
-  private val configPath: Path = Paths.get("secret.properties")
-  private val backupPath: Path = Paths.get("mkm_backup_" + System.currentTimeMillis() + ".csv")
+  private val backupPath: Path = null
+  //Paths.get("mkm_backup_" + System.currentTimeMillis() + ".csv")
   private var aborted: BooleanProperty = propFactory.newBooleanProperty(false)
   private var running: BooleanProperty = propFactory.newBooleanProperty(false)
 
@@ -48,7 +49,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   private val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
 
   private val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
-  private val interval: IntegerProperty = propFactory.newIntegerProperty(180)
+  private val interval: IntegerProperty = propFactory.newIntegerProperty("interval", 180, prop)
   private val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
 
   var backupFirst = true
@@ -75,55 +76,25 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
   }
 
-  def updateProp(str: String, property: StringProperty): Unit = {
-    val value = prop.get(str)
-    if (value != null && value != "") {
-      property.setValue(String.valueOf(value))
+  def readProperties(nativeBase: Object): Unit = {
+    val ex = nativeProvider.readProperties(prop, this, nativeBase)
+    if (ex != null) {
+      handleEx(ex)
     }
   }
 
-  def readProperties(): Unit = {
-    if (!configPath.toFile.exists) {
-      configPath.toFile.createNewFile
-    }
+  def start(nativeBase: Object): Unit = {
+    readProperties(nativeBase)
+    running.setValue(true)
 
-    var str: InputStream = new ByteArrayInputStream(Array(42))
-    try {
-      str = new FileInputStream(configPath.toFile)
-      prop.load(str)
-
-      updateProp("mkmApp", mkmAppToken)
-      updateProp("mkmAppSecret", mkmAppSecret)
-      updateProp("mkmAccessToken", mkmAccessToken)
-      updateProp("mkmAccessTokenSecret", mkmAccessTokenSecret)
-      updateProp("snapUser", snapUser)
-      updateProp("snapToken", snapToken)
-
-      if (prop.get("mkmAppToken") != null) {
-        output.setValue("Stored authentication information restored")
-      }
-    } catch {
-      case e: Exception => handleEx(e)
-    } finally {
-      str.close()
-    }
+    thread = run(nativeBase)
   }
 
-  def start(): Unit = {
-    readProperties()
-
-    thread = run()
-  }
-
-  def save(): Unit = {
-    var str: OutputStream = new ByteArrayOutputStream()
-    try {
-      str = new FileOutputStream(configPath.toFile)
-      prop.store(str, null)
-    } catch {
-      case e: Exception => handleEx(e)
-    } finally {
-      str.close()
+  def save(nativeBase: Object): Unit = {
+    println("save props")
+    val ex = nativeProvider.save(prop, nativeBase)
+    if (ex != null) {
+      handleEx(ex)
     }
   }
 
@@ -140,12 +111,14 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       if (json == null) {
         snapToken.setValue("")
       } else {
+        System.out.println("set token to " + json.token)
         snapToken.setValue(json.token)
       }
     }
   }
 
   def stop(): Unit = {
+    running.setValue(false)
     thread.interrupt()
   }
 
@@ -153,14 +126,14 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     nativeProvider.openLink(url)
   }
 
-  def run(): Thread = {
+  def run(nativeBase: Object): Thread = {
     val t = new Thread(new Runnable {
       override def run(): Unit = {
         while (!aborted.getValue) {
           if (running.getValue) {
             nextSync.setValue(0)
             try {
-              sync
+              sync(nativeBase)
             } catch {
               case e: Exception => handleEx(e)
             }
@@ -185,13 +158,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     t
   }
 
-  def sync(): Unit = {
+  def sync(nativeBase: Object): Unit = {
     if (backupFirst) {
       // Create a local backup of the MKM Stock
       output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
       val csv = loadMkmStock()
 
-      val writer = new PrintWriter(backupPath.toFile)
+      /*val writer = new PrintWriter(backupPath.toFile)
 
       try {
         writer.write(csv)
@@ -199,7 +172,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         case e: Exception => handleEx(e)
       } finally {
         writer.close()
-      }
+      }*/
+
+      nativeProvider.saveToFile(s"backup_${System.currentTimeMillis()}.csv", csv, nativeBase)
 
       backupFirst = false
     }
@@ -336,7 +311,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def loadChangedFromSnap(): String = {
-    val res = new SnapConnector().call(snapChangedEndpoint, "GET", getAuth)
+    val res = new SnapConnector().call(snapChangedEndpoint, "GET", getAuth, null)
     res
   }
 
@@ -355,7 +330,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       val result = obj.stock
 
       // get string content from base64'd gzip
-      val arr: Array[Byte] = Base64.getDecoder.decode(result)
+      val arr: Array[Byte] = nativeProvider.decodeBase64(result)
       val asd: ByteArrayInputStream = new ByteArrayInputStream(arr)
       val gz: GZIPInputStream = new GZIPInputStream(asd)
       val rd: BufferedReader = new BufferedReader(new InputStreamReader(gz))
@@ -370,8 +345,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
           content.add(line)
         }
       }
-      val strArr = content.toArray(new Array[String](0))
-      val csv = String.join("\n", strArr: _*)
+      val csv = StringUtils.join(content, "\n")
       csv
     } else {
       var text = "Server response: " + mkm.responseCode + " "

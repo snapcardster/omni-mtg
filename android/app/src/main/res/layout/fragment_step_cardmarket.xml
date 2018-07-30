@@ -21,7 +21,7 @@
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:orientation="vertical">
 
                 <TextView
@@ -42,7 +42,15 @@
                     android:layout_marginTop="0dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
-                    android:text="Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et no sea takimata sanctus est Lorem ipsum dolor sit amet." />
+                    android:focusable="true"
+                    android:linksClickable="true"
+                    android:text="@string/mkm_steps" />
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scaleType="fitStart"
+                    android:src="@drawable/select_all_example" />
 
             </LinearLayout>
 
@@ -66,21 +74,13 @@
 
                 <Button
                     style="?android:attr/borderlessButtonStyle"
+                    android:id="@+id/card_cardmarket_details_paste"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
                     android:text="Paste from Clipboard"
                     android:textColor="@color/colorPrimary"
                     android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="16dp"
-                    android:layout_marginBottom="16dp"
-                    android:text="Step 4: Copy all credentials and paste them here" />
 
                 <android.support.design.widget.TextInputLayout
                     android:layout_width="match_parent"

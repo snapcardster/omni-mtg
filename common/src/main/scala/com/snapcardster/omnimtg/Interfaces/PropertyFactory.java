@@ -10,4 +10,6 @@ public interface PropertyFactory {
     StringProperty newStringProperty(String name, String initialValue, Properties prop);
 
     IntegerProperty newIntegerProperty(Integer initialValue);
+
+    IntegerProperty newIntegerProperty(String name, Integer initialValue, Properties prop);
 }

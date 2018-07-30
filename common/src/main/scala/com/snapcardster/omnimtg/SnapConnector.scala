@@ -8,22 +8,25 @@ class SnapConnector {
     val connection: HttpURLConnection = new URL(requestURL).openConnection.asInstanceOf[HttpURLConnection]
     if (auth !=null){
       connection.addRequestProperty("Authorization", auth)
+      System.out.println("Auth:" + auth)
     }
-    if (body != null) {
+    if (true || body != null) {
       connection.setRequestProperty("Content-Type", "application/json")
       connection.setRequestProperty("Accept", "application/json")
     }
+
     connection.setRequestMethod(method)
+    System.out.println(connection.getRequestMethod)
     connection.setUseCaches(false)
     connection.setDoInput(true)
-    connection.setDoOutput(true)
-    connection.connect()
-
     if (body != null) {
       val outputInBytes = body.getBytes("UTF-8")
       val os = connection.getOutputStream
       os.write(outputInBytes)
     }
+    connection.connect()
+
+    System.out.println(requestURL + " response code:" + connection.getResponseCode)
 
     val lastCode = connection.getResponseCode
 
