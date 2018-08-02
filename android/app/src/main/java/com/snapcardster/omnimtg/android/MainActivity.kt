@@ -1,10 +1,14 @@
 package com.snapcardster.omnimtg.android
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.os.Bundle
 import android.provider.Settings
+import android.support.v4.app.ActivityCompat
+import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import com.snapcardster.omnimtg.android.Adapter.StepperAdapter
@@ -15,11 +19,20 @@ import org.jetbrains.anko.okButton
 
 class MainActivity : AppCompatActivity() {
 
+    val PERMISSION_WRITE_STORAGE = 1
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         stepperLayout.setAdapter(StepperAdapter(supportFragmentManager, this))
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                    PERMISSION_WRITE_STORAGE)
+        }
 
         controller.readProperties(this)
     }

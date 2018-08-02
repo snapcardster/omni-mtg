@@ -25,7 +25,12 @@ class StepFragmentSync : StepFragment(), BlockingStep {
 
         controller.interval.addListener(object : AndroidIntegerPropertyListener {
             override fun onChanged(oldValue: Int?, newValue: Int?, callListener: Boolean?) {
-                doAsync { uiThread { view.card_sync_settings_txt.setText("Sync every $newValue seconds, ${(24 * 60 * 60) / newValue!!} times per day") } }
+                doAsync { uiThread { view.card_sync_settings_txt.setText("Sync every $newValue seconds, ${(24 * 60 * 60) / newValue!!} times per day\nNext Sync in ${controller.getnextSync().value} seconds") } }
+            }
+        })
+        controller.getnextSync().addListener(object : AndroidIntegerPropertyListener {
+            override fun onChanged(oldValue: Int?, newValue: Int?, callListener: Boolean?) {
+                doAsync { uiThread { controller.interval.value.let { view.card_sync_settings_txt.setText("Sync every ${it} seconds, ${(24 * 60 * 60) / it} times per day\nNext Sync in ${newValue} seconds") } } }
             }
         })
 
