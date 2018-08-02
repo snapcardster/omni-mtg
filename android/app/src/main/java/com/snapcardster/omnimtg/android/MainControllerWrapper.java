@@ -1,6 +1,8 @@
 package com.snapcardster.omnimtg.android;
 
+import android.app.Activity;
 import android.content.Context;
+import android.os.PowerManager;
 
 import com.snapcardster.omnimtg.Interfaces.BooleanProperty;
 import com.snapcardster.omnimtg.Interfaces.IntegerProperty;
@@ -32,6 +34,9 @@ public class MainControllerWrapper implements MainControllerInterface {
 
     @Override
     public void start(Object nativeBase) {
+        PowerManager pm = (PowerManager) ((Activity)nativeBase).getSystemService(Context.POWER_SERVICE);
+        PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "omnimtg:sync");
+        wl.acquire();
         controller.start(nativeBase);
     }
 

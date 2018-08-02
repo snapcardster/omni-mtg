@@ -17,10 +17,10 @@ class StepperAdapter(fm: FragmentManager, context: Context) : AbstractFragmentSt
     override fun createStep(position: Int): Step {
         val step = when (position) {
             0 -> StepFragmentWelcome()
-            1 -> StepFragmentWifi()
-            2 -> StepFragmentCardmarket()
-            3 -> StepFragmentSnapcardster()
-            4 -> StepFragmentSync()
+            //1 -> StepFragmentWifi()
+            1 -> StepFragmentCardmarket()
+            2 -> StepFragmentSnapcardster()
+            3 -> StepFragmentSync()
             else -> StepFragmentWelcome()
         }
         val b = Bundle()
@@ -30,7 +30,7 @@ class StepperAdapter(fm: FragmentManager, context: Context) : AbstractFragmentSt
     }
 
     override fun getCount(): Int {
-        return 5
+        return 4
     }
 
     override fun getViewModel(position: Int): StepViewModel {
@@ -38,14 +38,14 @@ class StepperAdapter(fm: FragmentManager, context: Context) : AbstractFragmentSt
         return StepViewModel.Builder(context)
                 .setTitle(when (position) {
                     0 -> "Welcome"
-                    1 -> "WiFi"
-                    2 -> "CardMarket"
-                    3 -> "Snapcardster"
-                    4 -> "Sync"
+                    //1 -> "WiFi"
+                    1 -> "CardMarket"
+                    2 -> "Snapcardster"
+                    3 -> "Sync"
                     else -> "Welcome"
                 }) //can be a CharSequence instead
                 .setEndButtonLabel(when (position) {
-                    4 -> ""
+                    3 -> ""
                     else -> "Continue"
                 })
                 .create()
