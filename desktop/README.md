@@ -38,18 +38,19 @@
 
 ### Synchronise cardmarket.com and snapcardster.com
 
-1. Run the *.exe 
+1. Run "start omni-mtg" 
 2. Go to https://www.cardmarket.com/de/Magic/MainPage/showMyAccount
 3. Scroll down to "ACTIVE 3RD PARTY APP USAGE"
 4. Create Dedicated App
 5. Copy your API credentials into Omni MTG
-6. E-Mail API@snapcardster.com to receive and enter your API credentials
+6. Enter your Snapcardster Login credentials
 7. Save and Test
 
 ## TODO
 
 - [x] cardmarket.com integration
 - [x] Snapcardster.com integration
+- [ ] Android Tablet Support
 - [ ] MacOS and Linux support
 - [ ] Interface clean up
 - [ ] eBay.com integration
@@ -65,6 +66,3 @@ Omni MTG runs offline and does not share any token credentials with third-partys
 Unless covered under some other license, all content in this repository is shared under an MIT license. See [license.md](./license.md) for details.
 
 Snapcardster ™ is a registered trademark of Snapp.ai GmbH. Snapcardster is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. Magic the Gathering is a registered trademark of Wizards of the Coast, Inc. Magic the Gathering and all magic images are copyright © Wizards Of The Coast, Inc.
-
-
-
