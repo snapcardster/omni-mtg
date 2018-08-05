@@ -1,29 +1,23 @@
 package com.snapcardster.omnimtg.android.Fragments
 
-import android.os.Build
-import android.os.Bundle
-import android.text.Html
-import android.text.method.LinkMovementMethod
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import com.snapcardster.omnimtg.android.MainActivity.Companion.controller
-import com.snapcardster.omnimtg.android.R
-import com.stepstone.stepper.VerificationError
-import kotlinx.android.synthetic.main.fragment_step_cardmarket.*
-import kotlinx.android.synthetic.main.fragment_step_cardmarket.view.*
-import org.jetbrains.anko.sdk25.coroutines.onClick
-import org.jetbrains.anko.support.v4.toast
-import android.content.ClipData
 import android.content.ClipDescription.MIMETYPE_TEXT_HTML
 import android.content.ClipDescription.MIMETYPE_TEXT_PLAIN
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Context.CLIPBOARD_SERVICE
+import android.os.Bundle
+import android.text.method.LinkMovementMethod
 import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import com.snapcardster.omnimtg.android.MainActivity
+import com.snapcardster.omnimtg.android.MainActivity.Companion.controller
+import com.snapcardster.omnimtg.android.R
+import com.stepstone.stepper.VerificationError
 import kotlinx.android.synthetic.main.activity_main.*
-import org.jetbrains.anko.support.v4.act
+import kotlinx.android.synthetic.main.fragment_step_cardmarket.view.*
+import org.jetbrains.anko.sdk25.coroutines.onClick
+import org.jetbrains.anko.support.v4.toast
 
 
 class StepFragmentCardmarket : StepFragment() {
@@ -53,14 +47,19 @@ class StepFragmentCardmarket : StepFragment() {
                     val pasteData = item.getText().toString()
 
                     controller.insertFromClip("mkm", pasteData)
-                }else{
-                    Log.d("Clip","desc:" + clipboard.getPrimaryClipDescription().getMimeType(0))
+                    if (!MainActivity.controller.mkmAppToken.value.isNullOrBlank() &&
+                            !MainActivity.controller.mkmAppSecret.value.isNullOrBlank() &&
+                            !MainActivity.controller.mkmAccessTokenSecret.value.isNullOrBlank() &&
+                            !MainActivity.controller.mkmAccessToken.value.isNullOrBlank()) {
+                        activity.stepperLayout.proceed()
+                    }
+                } else {
+                    Log.d("Clip", "desc:" + clipboard.getPrimaryClipDescription().getMimeType(0))
                 }
-            }else{
-                Log.d("Clip","hasPrimaryClip = false")
+            } else {
+                Log.d("Clip", "hasPrimaryClip = false")
             }
         }
-
 
         return view
     }
@@ -79,7 +78,7 @@ class StepFragmentCardmarket : StepFragment() {
         if (MainActivity.firstRun && !MainActivity.controller.mkmAppToken.value.isNullOrBlank() &&
                 !MainActivity.controller.mkmAppSecret.value.isNullOrBlank() &&
                 !MainActivity.controller.mkmAccessTokenSecret.value.isNullOrBlank() &&
-                !MainActivity.controller.mkmAccessToken.value.isNullOrBlank()){
+                !MainActivity.controller.mkmAccessToken.value.isNullOrBlank()) {
             activity.stepperLayout.proceed()
         }
     }

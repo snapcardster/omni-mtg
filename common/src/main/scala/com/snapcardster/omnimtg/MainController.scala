@@ -60,10 +60,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         val p: Pattern = Pattern.compile(".*App token\\s*(.*)\\s+App secret\\s*(.*)\\s+Access token\\s*(.*)\\s+Access token secret\\s*(.*)\\s*.*?")
         val matcher: Matcher = p.matcher(data)
         if (matcher.find) {
-          mkmAppToken.setValue(matcher.group(1))
-          mkmAppSecret.setValue(matcher.group(2))
-          mkmAccessToken.setValue(matcher.group(3))
-          mkmAccessTokenSecret.setValue(matcher.group(4))
+          mkmAppToken.setValue(matcher.group(1),true)
+          mkmAppSecret.setValue(matcher.group(2),true)
+          mkmAccessToken.setValue(matcher.group(3),true)
+          mkmAccessTokenSecret.setValue(matcher.group(4),true)
         }
       case "snap" =>
         val p: Pattern = Pattern.compile(".*User\\s*(.*)\\s+Token\\s*(.*)\\s*.*?")

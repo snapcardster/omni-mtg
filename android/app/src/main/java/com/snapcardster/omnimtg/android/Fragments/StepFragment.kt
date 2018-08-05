@@ -12,6 +12,7 @@ import com.stepstone.stepper.Step
 import com.stepstone.stepper.VerificationError
 import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.support.v4.toast
+import org.jetbrains.anko.support.v4.uiThread
 import org.jetbrains.anko.uiThread
 
 abstract class StepFragment : Fragment(), Step {
@@ -43,7 +44,7 @@ abstract class StepFragment : Fragment(), Step {
                 if (callListener) {
                     Log.d("PropChanged", oldValue + " -> " + newValue)
                     if (oldValue != newValue) {
-                        txt.setText(newValue)
+                        doAsync { uiThread { txt.setText(newValue) } }
                     }
                 }
             }
@@ -75,7 +76,7 @@ abstract class StepFragment : Fragment(), Step {
                 if (callListener) {
                     Log.d("PropChanged2", oldValue + " -> " + newValue)
                     if (oldValue != newValue) {
-                        txt.setText(newValue)
+                        doAsync { uiThread { txt.setText(newValue) } }
                     }
                 }
             }

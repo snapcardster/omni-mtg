@@ -34,9 +34,9 @@ public class MainControllerWrapper implements MainControllerInterface {
 
     @Override
     public void start(Object nativeBase) {
-        /*PowerManager pm = (PowerManager) ((Activity)nativeBase).getSystemService(Context.POWER_SERVICE);
-        PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "omnimtg:sync");
-        wl.acquire();*/
+        PowerManager pm = (PowerManager) ((Activity)nativeBase).getSystemService(Context.POWER_SERVICE);
+        PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "omnimtg:sync");
+        wl.acquire();
         controller.start(nativeBase);
     }
 
