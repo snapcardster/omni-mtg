@@ -24,7 +24,8 @@
 <ul>
   <li><a href="#about">About</a></li>
   <li><a href="#usage">Usage</a></li>
-  <li><a href="#notes">TODO</a></li>
+  <li><a href="#android">Android</a></li>
+  <li><a href="#tTODO">TODO</a></li>
   <li><a href="#notes">Notes</a></li>
   <li><a href="#license">License</a></li>
 </ul>
@@ -34,7 +35,6 @@
 ![example](screenshot.png "Example")
 
 ## Usage
-
 
 ### Synchronise cardmarket.com and snapcardster.com
 
@@ -46,13 +46,18 @@
 6. Enter your Snapcardster Login credentials
 7. Save and Test
 
+## Android
+
+1. Download the official Android App here: https://play.google.com/store/apps/details?id=com.snapcardster.omnimtg.android
+2. A tablet with connected power chord is recommended
+
 ## TODO
 
 - [x] cardmarket.com integration
 - [x] Snapcardster.com integration
-- [ ] Android Tablet Support
+- [x] Android Tablet Support 
 - [ ] MacOS and Linux support
-- [ ] Interface clean up
+- [x] Interface clean up
 - [ ] eBay.com integration
 - [ ] TCGPlayer.com integration
 - [ ] Amazon.com integration
