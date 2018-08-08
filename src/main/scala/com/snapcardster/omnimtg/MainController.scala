@@ -20,7 +20,7 @@ import scala.collection.mutable.ListBuffer
 import scala.util.Try
 
 class MainController {
-  val title = "Omni MTG Sync Tool, v2018-07-05"
+  val title = "Omni MTG Sync Tool, v2018-08-08"
 
   val version = "2"
 
@@ -585,22 +585,22 @@ class MainController {
       val xs = xmlList(x.getChildNodes)
       val success = java.lang.Boolean.parseBoolean(xs.find(_.getNodeName == "success").get.getTextContent)
       val message = xs.find(_.getNodeName == "message").map(_.getTextContent)
-      val value = xs.find(_.getNodeName == "idArticle").get
+      val value = xs.find(_.getNodeName == "idArticle")
       // val englishName = xs.find(_.getNodeName == "engName").map(_.getTextContent)
 
-      val ch = xmlList(value.getChildNodes)
+      val ch = value.toList.flatMap(x => xmlList(x.getChildNodes))
       val idArticle =
         if (ch.size == 1 && ch.head.getNodeType == Node.TEXT_NODE) {
-          ch.head.getTextContent.toLong
+          Some(ch.head.getTextContent.toLong)
         } else {
-          ch.find(_.getNodeName == "idArticle").get.getTextContent.toLong
+          ch.find(_.getNodeName == "idArticle").map(_.getTextContent.toLong)
         }
 
-      val index = buf.indexWhere(b => b.externalId.get == idArticle)
+      val index = buf.indexWhere(b => b.externalId == idArticle)
 
       val collId =
         if (index == -1) {
-          // sys.error("This should not occur: The element with id " + idArticle + " is not fund in mkm xml")
+          println("The element with id " + idArticle + " is not fund in mkm xml, success was: " + success + ", message: " + message)
           -1
         } else {
           val item = buf(index)
