@@ -123,13 +123,15 @@ class MainGUI extends Application {
 
     val main = set(new VBox(
       startButton,
-      grid,
+      grid
+    ))(vbox => vbox.setSpacing(6))
+
+    val out = set(new VBox(
       new Label("📜 Output"),
       set(new TextArea("...")) { x =>
         linkTo(x, controller.output)
         x.setEditable(false)
-        x.setPrefWidth(640)
-        x.setPrefHeight(290)
+        x.setPrefSize(600, 450)
       }
     ))(vbox => vbox.setSpacing(6))
 
@@ -186,8 +188,11 @@ class MainGUI extends Application {
 
     pane.add(new VBox(titleLabel, link), 0, 0, 2, 1)
     pane.add(set(mkm)(pad), 0, 1)
-    pane.add(set(snap)(pad), 1, 1)
-    pane.add(set(main)(pad), 0, 2, 2, 1)
+    pane.add(set(snap)(pad), 0, 2)
+    pane.add(set(main)(pad), 0, 3)
+    pane.add(set(out)(x => {
+      x.setPadding(new Insets(1.0, 1.0, 1.0, 12.0))
+    }), 1, 1, 1, 3)
 
     pane.setStyle(paneCss)
     pane

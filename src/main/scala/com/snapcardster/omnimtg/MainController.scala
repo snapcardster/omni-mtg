@@ -4,8 +4,10 @@ import java.awt.datatransfer._
 import java.awt.{Desktop, Toolkit}
 import java.io._
 import java.net.URI
+import java.nio.charset.StandardCharsets
 import java.nio.file._
 import java.util
+import java.util.Base64.Encoder
 import java.util.regex._
 import java.util.zip._
 import java.util.{Base64, Date, Properties}
@@ -24,7 +26,7 @@ class MainController {
 
   val version = "2"
 
-  // TODO: change back to test after test
+  // TODO: change back to prod after test
   val snapBaseUrl: String = "https://api.snapcardster.com"
   //val snapBaseUrl: String = "https://test.snapcardster.com"
   //val snapBaseUrl: String = "http://localhost:9000"
@@ -354,8 +356,8 @@ class MainController {
 
   def errorText(e: Throwable): String = {
     if (e != null) {
-      val res = e.toString + "\n" + e.getStackTrace.take(4).mkString("\n")
-      res.substring(0, Math.min(res.length, 1000))
+      val res = e.toString + "\n" + e.getStackTrace.mkString("\n")
+      res.substring(0, Math.min(res.length, 8000))
     } else {
       "null"
     }
@@ -567,7 +569,7 @@ class MainController {
     dbFactory.setXIncludeAware(false)
     dbFactory.setExpandEntityReferences(false)
     val dBuilder = dbFactory.newDocumentBuilder
-    val doc = dBuilder.parse(new ByteArrayInputStream(xmlDoc.getBytes))
+    val doc = dBuilder.parse(new ByteArrayInputStream(StandardCharsets.UTF_8.encode(xmlDoc).array()))
     doc.getDocumentElement.normalize()
     doc
   }
@@ -577,7 +579,23 @@ class MainController {
   }
 
   def getConfirmation(xml: String, tagName: String, entries: Seq[SellerDataChanged], added: Boolean): String = {
-    val lst = xmlList(getXml(xml).getElementsByTagName(tagName))
+    try {
+      val path = Paths.get("xml-" + tagName + "-" + System.currentTimeMillis + ".xml")
+      val x = new PrintWriter(path.toFile, StandardCharsets.UTF_8.name)
+      x.write(xml)
+      x.close
+    } catch {
+      case x: Throwable =>
+        println("Failed writing info xml: " + x)
+    }
+
+    val lst = try {
+      xmlList(getXml(xml).getElementsByTagName(tagName))
+    } catch {
+      case x: Throwable =>
+        handleEx(x, "performing getXml from " + xml)
+        Nil
+    }
     val buf = new ListBuffer[SellerDataChanged]
     buf.append(entries: _*)
 
