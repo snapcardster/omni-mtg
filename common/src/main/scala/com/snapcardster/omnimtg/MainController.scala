@@ -1,6 +1,7 @@
 package com.snapcardster.omnimtg
 
 import java.io._
+import java.nio.charset.StandardCharsets
 import java.nio.file._
 import java.util
 import java.util.regex._
@@ -60,10 +61,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         val p: Pattern = Pattern.compile(".*App token\\s*(.*)\\s+App secret\\s*(.*)\\s+Access token\\s*(.*)\\s+Access token secret\\s*(.*)\\s*.*?")
         val matcher: Matcher = p.matcher(data)
         if (matcher.find) {
-          mkmAppToken.setValue(matcher.group(1),true)
-          mkmAppSecret.setValue(matcher.group(2),true)
-          mkmAccessToken.setValue(matcher.group(3),true)
-          mkmAccessTokenSecret.setValue(matcher.group(4),true)
+          mkmAppToken.setValue(matcher.group(1), true)
+          mkmAppSecret.setValue(matcher.group(2), true)
+          mkmAccessToken.setValue(matcher.group(3), true)
+          mkmAccessTokenSecret.setValue(matcher.group(4), true)
         }
       case "snap" =>
         val p: Pattern = Pattern.compile(".*User\\s*(.*)\\s+Token\\s*(.*)\\s*.*?")
@@ -482,7 +483,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     dbFactory.setXIncludeAware(false)
     dbFactory.setExpandEntityReferences(false)
     val dBuilder = dbFactory.newDocumentBuilder
-    val doc = dBuilder.parse(new ByteArrayInputStream(xmlDoc.getBytes))
+    val doc = dBuilder.parse(new ByteArrayInputStream(xmlDoc.getBytes("UTF-8")))
     doc.getDocumentElement.normalize()
     doc
   }
@@ -492,7 +493,25 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def getConfirmation(xml: String, tagName: String, entries: Seq[SellerDataChanged], added: Boolean): String = {
-    val lst = xmlList(getXml(xml).getElementsByTagName(tagName))
+    try {
+      val path = Paths.get("xml-" + tagName + "-" + System.currentTimeMillis + ".xml")
+      val x = new PrintWriter(path.toFile, StandardCharsets.UTF_8.name)
+      x.write(xml)
+      x.close
+    } catch {
+      case x: Throwable =>
+        println("Failed writing info xml: " + x)
+    }
+
+    val lst = try {
+      xmlList(getXml(xml).getElementsByTagName(tagName))
+    } catch {
+      case x: Throwable =>
+        handleEx(x, "performing getXml from " + xml)
+        Nil
+    }
+
+
     val buf = new ListBuffer[SellerDataChanged]
     buf.append(entries: _*)
 
@@ -500,22 +519,22 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       val xs = xmlList(x.getChildNodes)
       val success = java.lang.Boolean.parseBoolean(xs.find(_.getNodeName == "success").get.getTextContent)
       val message = xs.find(_.getNodeName == "message").map(_.getTextContent)
-      val value = xs.find(_.getNodeName == "idArticle").get
+      val value = xs.find(_.getNodeName == "idArticle")
       // val englishName = xs.find(_.getNodeName == "engName").map(_.getTextContent)
 
-      val ch = xmlList(value.getChildNodes)
+      val ch = value.toList.flatMap(x => xmlList(x.getChildNodes))
       val idArticle =
         if (ch.size == 1 && ch.head.getNodeType == Node.TEXT_NODE) {
-          ch.head.getTextContent.toLong
+          Some(ch.head.getTextContent.toLong)
         } else {
-          ch.find(_.getNodeName == "idArticle").get.getTextContent.toLong
+          ch.find(_.getNodeName == "idArticle").map(_.getTextContent.toLong)
         }
 
-      val index = buf.indexWhere(b => b.externalId.get == idArticle)
+      val index = buf.indexWhere(b => b.externalId == idArticle)
 
       val collId =
         if (index == -1) {
-          // sys.error("This should not occur: The element with id " + idArticle + " is not fund in mkm xml")
+          println("The element with id " + idArticle + " is not fund in mkm xml, success was: " + success + ", message: " + message)
           -1
         } else {
           val item = buf(index)
