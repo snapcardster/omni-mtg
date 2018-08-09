@@ -569,7 +569,7 @@ class MainController {
     dbFactory.setXIncludeAware(false)
     dbFactory.setExpandEntityReferences(false)
     val dBuilder = dbFactory.newDocumentBuilder
-    val doc = dBuilder.parse(new ByteArrayInputStream(StandardCharsets.UTF_8.encode(xmlDoc).array()))
+    val doc = dBuilder.parse(new ByteArrayInputStream(xmlDoc.getBytes("UTF-8")))
     doc.getDocumentElement.normalize()
     doc
   }
