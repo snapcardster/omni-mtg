@@ -47,7 +47,7 @@ class MainGUI extends Application {
   }
 
   def bindSave(x: Button): Unit = {
-    x.setOnMouseClicked(_ => controller.save())
+    x.setOnMouseClicked(_ => controller.save(null))
   }
 
   def bindLogin(x: Button): Unit = {
@@ -73,7 +73,7 @@ class MainGUI extends Application {
   }
 
   def getStage: GridPane = {
-    controller.start()
+    controller.start(null)
 
     val grid = new GridPane
     grid.setHgap(20.0)

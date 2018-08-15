@@ -1,5 +1,7 @@
 package com.snapcardster.omnimtg;
 
+import com.snapcardster.omnimtg.Interfaces.NativeFunctionProvider;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.BufferedReader;
@@ -25,15 +27,17 @@ public class M11DedicatedApp {
     private int _lastCode;
     private String _lastContent;
     private boolean _debug;
+    private NativeFunctionProvider nativeFunctionProvider;
 
     /**
      * Constructor. Fill parameters according to given MKM profile app parameters.
      */
-    public M11DedicatedApp(String appToken, String appSecret, String accessToken, String accessSecret) {
+    public M11DedicatedApp(String appToken, String appSecret, String accessToken, String accessSecret, NativeFunctionProvider nativeFunctionProvider) {
         _mkmAppToken = appToken;
         _mkmAppSecret = appSecret;
         _mkmAccessToken = accessToken;
         _mkmAccessTokenSecret = accessSecret;
+        this.nativeFunctionProvider = nativeFunctionProvider;
 
         _lastError = null;
         _debug = false;
@@ -116,7 +120,7 @@ public class M11DedicatedApp {
             SecretKeySpec secret = new SecretKeySpec(signingKey.getBytes(), mac.getAlgorithm());
             mac.init(secret);
             byte[] digest = mac.doFinal(baseString.getBytes());
-            String oauth_signature = android.util.Base64.encodeToString(digest,android.util.Base64.NO_WRAP);
+            String oauth_signature = nativeFunctionProvider.encodeBase64ToString(digest);
 
             String authorizationProperty =
                     "OAuth realm=\"" + realm + "\", " +

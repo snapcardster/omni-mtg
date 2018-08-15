@@ -26,7 +26,7 @@ lazy val root = (project in file(".")).
 // javacOptions ++= Seq("-source", "1.9", "-target", "1.9")
 
 // Need to add this directory as source root in intellij settings
-//scalaSource in Compile := file("../common/src/main/scala")
+// scalaSource in Compile := file("../common/src/main/scala")
 
 // Material UI Components in Java FX
 // https://github.com/jfoenixadmin/JFoenix
@@ -37,5 +37,11 @@ libraryDependencies += "com.google.code.gson" % "gson" % "2.8.5"
 
 // https://mvnrepository.com/artifact/commons-codec/commons-codec
 libraryDependencies += "commons-codec" % "commons-codec" % "1.11"
+
+// https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
+libraryDependencies += "commons-lang" % "commons-lang" % "2.6"
+
+libraryDependencies += "javax.xml.bind" % "jaxb-api" % "2.2.11"
+
 
 libraryDependencies += scalaTest % Test

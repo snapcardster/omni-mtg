@@ -10,7 +10,7 @@ class SnapConnector {
       connection.addRequestProperty("Authorization", auth)
       System.out.println("Auth:" + auth)
     }
-    if (true || body != null) {
+    if (body != null) {
       connection.setRequestProperty("Content-Type", "application/json")
       connection.setRequestProperty("Accept", "application/json")
     }
@@ -20,6 +20,7 @@ class SnapConnector {
     connection.setUseCaches(false)
     connection.setDoInput(true)
     if (body != null) {
+      connection.setDoOutput(true)
       val outputInBytes = body.getBytes("UTF-8")
       val os = connection.getOutputStream
       os.write(outputInBytes)

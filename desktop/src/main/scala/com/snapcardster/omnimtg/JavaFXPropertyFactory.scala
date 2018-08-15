@@ -24,6 +24,8 @@ object JavaFXPropertyFactory extends PropertyFactory {
     stringProp.addListener(l)
     stringProp
   }
+
+  override def newIntegerProperty(name: String, initialValue: Integer, prop: Properties): JavaFXIntegerProperty =  new JavaFXIntegerProperty(initialValue)
 }
 
 class JavaFXBooleanProperty extends BooleanProperty {
@@ -56,6 +58,8 @@ class JavaFXStringProperty extends StringProperty {
   override def getNativeBase: SimpleStringProperty = nativeBase
 
   override def addListener(listener: Object): Unit = nativeBase.addListener(listener.asInstanceOf[ChangeListener[Any]])
+
+  override def setValue(value: String, callListener: lang.Boolean): Unit = nativeBase.setValue(value)
 }
 
 class JavaFXIntegerProperty extends IntegerProperty {
@@ -71,4 +75,6 @@ class JavaFXIntegerProperty extends IntegerProperty {
   override def getValue: Integer = nativeBase.getValue
 
   override def getNativeBase: SimpleIntegerProperty = nativeBase
+
+  override def addListener(listener: scala.Any): Unit = ()
 }

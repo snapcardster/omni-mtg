@@ -8,4 +8,5 @@ public interface NativeFunctionProvider {
     Throwable readProperties(Properties prop, MainControllerInterface controller, Object nativeBase);
     byte[] decodeBase64(String str);
     Throwable saveToFile(String path, String contents, Object nativeBase);
+    String encodeBase64ToString(byte[] digest);
 }

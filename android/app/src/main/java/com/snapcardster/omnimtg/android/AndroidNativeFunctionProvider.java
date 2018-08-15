@@ -49,6 +49,11 @@ public class AndroidNativeFunctionProvider implements NativeFunctionProvider {
     }
 
     @Override
+    public String encodeBase64ToString(byte[] digest) {
+        return android.util.Base64.encodeToString(digest,android.util.Base64.NO_WRAP);
+    }
+
+    @Override
     public Throwable save(Properties prop, Object nativeBase) {
         try (OutputStream out = ((Context) nativeBase).openFileOutput("config.txt", Context.MODE_PRIVATE)) {
             prop.store(out, null);

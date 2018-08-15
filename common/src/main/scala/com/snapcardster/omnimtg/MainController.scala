@@ -22,7 +22,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   val version = "2"
 
   // TODO: change back to test after test
-  // val snapBaseUrl: String = "https://api.snapcardster.com"
+  //val snapBaseUrl: String = "https://api.snapcardster.com"
   val snapBaseUrl: String = "https://dev.snapcardster.com" //"https://test.snapcardster.com"
   //val snapBaseUrl: String = "http://localhost:9000"
 
@@ -164,16 +164,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       // Create a local backup of the MKM Stock
       output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
       val csv = loadMkmStock()
-
-      /*val writer = new PrintWriter(backupPath.toFile)
-
-      try {
-        writer.write(csv)
-      } catch {
-        case e: Exception => handleEx(e)
-      } finally {
-        writer.close()
-      }*/
 
       nativeProvider.saveToFile(s"backup_${System.currentTimeMillis()}.csv", csv, nativeBase)
 
@@ -356,7 +346,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def getMkm: M11DedicatedApp = {
-    val x = new M11DedicatedApp(mkmAppToken.getValue, mkmAppSecret.getValue, mkmAccessToken.getValue, mkmAccessTokenSecret.getValue)
+    val x = new M11DedicatedApp(mkmAppToken.getValue, mkmAppSecret.getValue, mkmAccessToken.getValue, mkmAccessTokenSecret.getValue, nativeProvider)
     x.setDebug(true)
     x
   }

@@ -2,9 +2,10 @@ package com.snapcardster.omnimtg
 
 import java.io._
 import java.nio.file.{Path, Paths}
-import java.util.Properties
+import java.util.{Base64, Properties}
 
 import com.snapcardster.omnimtg.Interfaces.{MainControllerInterface, NativeFunctionProvider, StringProperty}
+import javax.xml.bind.DatatypeConverter
 
 object DesktopFunctionProvider extends NativeFunctionProvider {
   private val configPath: Path = Paths.get("secret.properties")
@@ -58,4 +59,21 @@ object DesktopFunctionProvider extends NativeFunctionProvider {
     }
     null
   }
+
+  override def decodeBase64(str: String): Array[Byte] =  Base64.getDecoder.decode(str)
+
+  override def saveToFile(path: String, contents: String, nativeBase: scala.Any): Throwable = {
+    val writer = new PrintWriter(path)
+
+    try {
+      writer.write(contents)
+    } catch {
+      case e: Exception => return e
+    } finally {
+      writer.close()
+    }
+    null
+  }
+
+  override def encodeBase64ToString(digest: Array[Byte]): String = DatatypeConverter.printBase64Binary(digest)
 }
