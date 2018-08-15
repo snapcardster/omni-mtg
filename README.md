@@ -50,8 +50,8 @@
 
 - [x] cardmarket.com integration
 - [x] Snapcardster.com integration
-- [ ] Android Tablet Support
-- [ ] MacOS and Linux support
+- [x] Android Tablet Support
+- [x] MacOS and Linux support
 - [ ] Interface clean up
 - [ ] eBay.com integration
 - [ ] TCGPlayer.com integration
