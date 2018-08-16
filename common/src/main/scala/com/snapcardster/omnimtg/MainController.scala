@@ -17,7 +17,7 @@ import org.w3c.dom.{Document, Node, NodeList}
 import scala.collection.mutable.ListBuffer
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
-  val title = "Omni MTG Sync Tool, v2018-06-28"
+  val title = "Omni MTG Sync Tool, v2018-08-16r"
 
   val version = "2"
 
@@ -38,8 +38,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   private val prop: Properties = new Properties
   private val backupPath: Path = null
   //Paths.get("mkm_backup_" + System.currentTimeMillis() + ".csv")
-  private var aborted: BooleanProperty = propFactory.newBooleanProperty(false)
-  private var running: BooleanProperty = propFactory.newBooleanProperty(false)
+  private val aborted: BooleanProperty = propFactory.newBooleanProperty(false)
+  private val running: BooleanProperty = propFactory.newBooleanProperty(false)
 
   private val mkmAppToken: StringProperty = propFactory.newStringProperty("mkmApp", "", prop)
   private val mkmAppSecret: StringProperty = propFactory.newStringProperty("mkmAppSecret", "", prop)
@@ -288,7 +288,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   def errorText(e: Throwable): String = {
     if (e != null) {
-      val res = e.toString + "\n" + e.getStackTrace.take(4).mkString("\n")
+      val res = e.toString + "\n" + e.getStackTrace.mkString("\n")
       res.substring(0, Math.min(res.length, 1000))
     } else {
       "null"

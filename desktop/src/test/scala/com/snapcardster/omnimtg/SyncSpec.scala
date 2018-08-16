@@ -1,13 +1,14 @@
-package omnimtg
+/*
+package com.snapcardster.omnimtg
 
-import org.scalatest._
+import org.scalatest.{FlatSpec, Matchers}
 
 class SyncSpec extends FlatSpec with Matchers {
   val buyerAuth: String = "testusernowallet,e61ce61fd6825b1c116babc9b1a387936981548437c05a0163e5e621637f5378"
   val sellerAuth: String = "testgenericseller,a9ecd25a8a5e96062395cbb97fdbefff34ac034077a3c44bd5a86fdcb808bccc"
   val hardCodedBuyerAddressId: Long = 257L
 
-  /*"Snap API" should "sync mkm into snap should lead to empty changed list" in {
+  "Snap API" should "sync mkm into snap should lead to empty changed list" in {
     implicit val connector: SnapConnector = new SnapConnector
     implicit val controller: MainController = new MainController
     controller.readProperties
@@ -158,5 +159,5 @@ class SyncSpec extends FlatSpec with Matchers {
     res.shouldNot(equal(""))
 
     offerId -> shipmentCardId
-  }*/
-}
+  }
+}*/

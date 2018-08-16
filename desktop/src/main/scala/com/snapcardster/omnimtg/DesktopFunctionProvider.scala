@@ -60,7 +60,7 @@ object DesktopFunctionProvider extends NativeFunctionProvider {
     null
   }
 
-  override def decodeBase64(str: String): Array[Byte] =  Base64.getDecoder.decode(str)
+  override def decodeBase64(str: String): Array[Byte] = Base64.getDecoder.decode(str)
 
   override def saveToFile(path: String, contents: String, nativeBase: scala.Any): Throwable = {
     val writer = new PrintWriter(path)

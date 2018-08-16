@@ -1,7 +1,7 @@
-package omnimtg
+/*
+package com.snapcardster.omnimtg
 
-import com.snapcardster.omnimtg.{DesktopFunctionProvider, JavaFXPropertyFactory, MainController}
-import org.scalatest._
+import org.scalatest.{FlatSpec, Matchers}
 
 class SnapSpec extends FlatSpec with Matchers {
   "Snap API" should "return changes" in {
@@ -14,3 +14,4 @@ class SnapSpec extends FlatSpec with Matchers {
     res.shouldNot(equal(""))
   }
 }
+*/

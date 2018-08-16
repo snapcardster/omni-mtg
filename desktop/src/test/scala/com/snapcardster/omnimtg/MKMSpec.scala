@@ -1,7 +1,7 @@
-package omnimtg
+/*
+package com.snapcardster.omnimtg
 
-import com.snapcardster.omnimtg.{DesktopFunctionProvider, JavaFXPropertyFactory, MainController, SellerDataChanged}
-import org.scalatest.{Ignore, _}
+import org.scalatest.{FlatSpec, Ignore, Matchers}
 
 @Ignore("Deletes important stuff")
 class MKMSpec extends FlatSpec with Matchers {
@@ -9,7 +9,7 @@ class MKMSpec extends FlatSpec with Matchers {
     val controller = new MainController(JavaFXPropertyFactory, DesktopFunctionProvider)
     controller.readProperties(DesktopFunctionProvider)
     val csv = controller.loadMkmStock()
-    csv.shouldNot(equal(""))
+    csv shouldNot equal("")
 
     val firstRowCols = csv.split("\n").drop(1).head.split(";")
     val firstId = firstRowCols.head.replaceAll("\"", "").toLong
@@ -22,3 +22,4 @@ class MKMSpec extends FlatSpec with Matchers {
     println(csv)
   }
 }
+*/
