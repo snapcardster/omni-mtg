@@ -73,7 +73,7 @@ class MainGUI extends Application {
   }
 
   def getStage: GridPane = {
-    controller.start(null)
+    controller.start(DesktopFunctionProvider)
 
     val grid = new GridPane
     grid.setHgap(20.0)
@@ -94,20 +94,19 @@ class MainGUI extends Application {
     }, 1, 3)
     grid.add(new Label("📆 Next sync in"), 0, 4)
     grid.add(set(new JFXTextField) { x =>
-      linkTo(x, controller.getnextSync().getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
+      linkTo(x, controller.getnextSync.getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
       x.setDisable(true)
     }, 1, 4)
 
     val fields = List(
-      controller.getMkmAppToken.getNativeBase.asInstanceOf[SimpleStringProperty], controller.getMkmAppSecret.getNativeBase.asInstanceOf[SimpleStringProperty], controller.getMkmAccessToken.getNativeBase.asInstanceOf[SimpleStringProperty],
-      controller.getMkmAccessTokenSecret.getNativeBase.asInstanceOf[SimpleStringProperty],
-      controller.getSnapUser.getNativeBase.asInstanceOf[SimpleStringProperty], controller.getSnapToken.getNativeBase.asInstanceOf[SimpleStringProperty]
+      controller.getMkmAppToken, controller.getMkmAppSecret, controller.getMkmAccessToken, controller.getMkmAccessTokenSecret,
+      controller.getSnapUser, controller.getSnapToken
     )
 
     val startButton = set(new JFXButton("🔄 Start Sync")) { x =>
       x.setStyle(buttonCss)
 
-      x.disableProperty.bind(fields.map(_.isEmpty).reduce(_ or _))
+      x.disableProperty.bind(fields.map(_.getNativeBase.asInstanceOf[SimpleStringProperty].isEmpty).reduce(_ or _))
       x.setOnMouseClicked { _ =>
         controller.getRunning.setValue(!controller.getRunning.getValue)
         val txt =
@@ -119,20 +118,22 @@ class MainGUI extends Application {
       }
     }
 
-    if (!fields.map(_.isEmpty).reduce(_ or _).get()) {
+    if (!fields.map(_.getNativeBase.asInstanceOf[SimpleStringProperty].isEmpty).reduce(_ or _).get()) {
       controller.getRunning.setValue(true)
       startButton.setText("▶ Running, click to stop")
     }
 
     val main = set(new VBox(
       startButton,
-      grid,
+      grid
+    ))(vbox => vbox.setSpacing(6))
+
+    val out = set(new VBox(
       new Label("📜 Output"),
       set(new TextArea("...")) { x =>
         linkTo(x, controller.getOutput.getNativeBase.asInstanceOf[SimpleStringProperty])
         x.setEditable(false)
-        x.setPrefWidth(640)
-        x.setPrefHeight(290)
+        x.setPrefSize(600, 450)
       }
     ))(vbox => vbox.setSpacing(6))
 
@@ -189,8 +190,11 @@ class MainGUI extends Application {
 
     pane.add(new VBox(titleLabel, link), 0, 0, 2, 1)
     pane.add(set(mkm)(pad), 0, 1)
-    pane.add(set(snap)(pad), 1, 1)
-    pane.add(set(main)(pad), 0, 2, 2, 1)
+    pane.add(set(snap)(pad), 0, 2)
+    pane.add(set(main)(pad), 0, 3)
+    pane.add(set(out)(x => {
+      x.setPadding(new Insets(1.0, 1.0, 1.0, 12.0))
+    }), 1, 1, 1, 3)
 
     pane.setStyle(paneCss)
     pane

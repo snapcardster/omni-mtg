@@ -1,7 +1,6 @@
 package com.snapcardster.omnimtg
 
 import java.io._
-import java.nio.charset.StandardCharsets
 import java.nio.file._
 import java.util
 import java.util.regex._
@@ -22,8 +21,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   val version = "2"
 
   // TODO: change back to test after test
-  //val snapBaseUrl: String = "https://api.snapcardster.com"
-  val snapBaseUrl: String = "https://dev.snapcardster.com" //"https://test.snapcardster.com"
+  val snapBaseUrl: String = "https://api.snapcardster.com"
+  //val snapBaseUrl: String = "https://dev.snapcardster.com" //"https://test.snapcardster.com"
   //val snapBaseUrl: String = "http://localhost:9000"
 
   val snapCsvEndpoint: String = snapBaseUrl + s"/importer/sellerdata/from/csv/$version"
@@ -38,20 +37,28 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   private val prop: Properties = new Properties
   private val backupPath: Path = null
   //Paths.get("mkm_backup_" + System.currentTimeMillis() + ".csv")
-  private val aborted: BooleanProperty = propFactory.newBooleanProperty(false)
-  private val running: BooleanProperty = propFactory.newBooleanProperty(false)
+  protected val aborted: BooleanProperty = propFactory.newBooleanProperty(false)
+  protected val running: BooleanProperty = propFactory.newBooleanProperty(false)
 
-  private val mkmAppToken: StringProperty = propFactory.newStringProperty("mkmApp", "", prop)
-  private val mkmAppSecret: StringProperty = propFactory.newStringProperty("mkmAppSecret", "", prop)
-  private val mkmAccessToken: StringProperty = propFactory.newStringProperty("mkmAccessToken", "", prop)
-  private val mkmAccessTokenSecret: StringProperty = propFactory.newStringProperty("mkmAccessTokenSecret", "", prop)
-  private val snapUser: StringProperty = propFactory.newStringProperty("snapUser", "", prop)
-  private val snapPassword: StringProperty = propFactory.newStringProperty("snapPassword", "", prop)
-  private val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
+  protected val mkmAppToken: StringProperty = propFactory.newStringProperty("mkmApp", "", prop)
 
-  private val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
-  private val interval: IntegerProperty = propFactory.newIntegerProperty("interval", 180, prop)
-  private val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
+  protected val mkmAppSecret: StringProperty = propFactory.newStringProperty("mkmAppSecret", "", prop)
+
+  protected val mkmAccessToken: StringProperty = propFactory.newStringProperty("mkmAccessToken", "", prop)
+
+  protected val mkmAccessTokenSecret: StringProperty = propFactory.newStringProperty("mkmAccessTokenSecret", "", prop)
+
+  protected val snapUser: StringProperty = propFactory.newStringProperty("snapUser", "", prop)
+
+  protected val snapPassword: StringProperty = propFactory.newStringProperty("snapPassword", "", prop)
+
+  protected val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
+
+  protected val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
+
+  protected val interval: IntegerProperty = propFactory.newIntegerProperty("interval", 180, prop)
+
+  protected val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
 
   var backupFirst = true
 
@@ -179,7 +186,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     output.setValue(sb.toString)
 
     val res = postToSnap(csv)
+
     // output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
+    println("res:" + res)
     val items = getChangeItems(res)
 
     val info =
@@ -200,13 +209,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def readableChangeEntry(x: SellerDataChanged): String = {
-    val csv = x.info.get
+    val csv = x.info
     x.`type` + " " + csv.name +
-      " (" + csv.editionCode.get + ") " + csv.language.shortString + " " +
+      " (" + csv.editionCode + ") " + csv.language.shortString + " " +
       csv.condition.shortString + (if (csv.foil) " Foil" else "") +
       (if (csv.altered) " Altered" else "") +
       (if (csv.signed) " Signed" else "") +
-      " " + csv.price.get + "€ (CSV: " + csv.meta + ")"
+      " " + csv.price + "€ (CSV: " + csv.meta + ")"
   }
 
   def outputPrefix(): String = {
@@ -274,7 +283,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def getChangeItems(json: String): Array[SellerDataChanged] = {
-    new Gson().fromJson(json, classOf[Array[SellerDataChanged]])
+    try {
+      new Gson().fromJson(json, classOf[Array[SellerDataChanged]])
+    } catch {
+      case x: Throwable =>
+        sys.error(x.toString + "\n" + json)
+    }
   }
 
   def handleEx(e: Throwable, obj: Any = null): Unit = {
@@ -289,7 +303,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   def errorText(e: Throwable): String = {
     if (e != null) {
       val res = e.toString + "\n" + e.getStackTrace.mkString("\n")
-      res.substring(0, Math.min(res.length, 1000))
+      res.substring(0, Math.min(res.length, 8000))
     } else {
       "null"
     }
@@ -364,7 +378,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         entries.map(entry =>
           s"""
             <article>
-              <idArticle>${entry.externalId.get}</idArticle>
+              <idArticle>${entry.externalId}</idArticle>
               <count>1</count>
             </article>
             """
@@ -401,7 +415,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
           // Cannot change qty, see:
           // https://www.mkmapi.eu/ws/documentation/API_2.0:Stock
-          val info = entry.info.get
+          val info = entry.info
           val csvLine = info.meta.replace("\"", "").split(";")
           // TODO: Apache CSV?
           val prodId = csvLine(1)
@@ -483,14 +497,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def getConfirmation(xml: String, tagName: String, entries: Seq[SellerDataChanged], added: Boolean): String = {
-    try {
-      val path = Paths.get("xml-" + tagName + "-" + System.currentTimeMillis + ".xml")
-      val x = new PrintWriter(path.toFile, StandardCharsets.UTF_8.name)
-      x.write(xml)
-      x.close
-    } catch {
-      case x: Throwable =>
-        println("Failed writing info xml: " + x)
+    val ex = nativeProvider.saveToFile("xml-" + tagName + "-" + System.currentTimeMillis + ".xml", xml, null)
+    if (ex == null) {
+      println("Failed writing info xml: " + ex)
     }
 
     val lst = try {
@@ -515,23 +524,23 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       val ch = value.toList.flatMap(x => xmlList(x.getChildNodes))
       val idArticle =
         if (ch.size == 1 && ch.head.getNodeType == Node.TEXT_NODE) {
-          Some(ch.head.getTextContent.toLong)
+          ch.head.getTextContent.toLong
         } else {
-          ch.find(_.getNodeName == "idArticle").map(_.getTextContent.toLong)
+          ch.find(_.getNodeName == "idArticle").map(_.getTextContent.toLong).getOrElse(-1)
         }
 
       val index = buf.indexWhere(b => b.externalId == idArticle)
 
-      val collId =
+      val collId: java.lang.Long =
         if (index == -1) {
           println("The element with id " + idArticle + " is not fund in mkm xml, success was: " + success + ", message: " + message)
-          -1
+          -1l
         } else {
           val item = buf(index)
           // We remove the element after finding it to prevent duplicate findings
           // (one idArticle maps to many collection ids)
           buf.remove(index)
-          item.collectionId.get
+          item.collectionId
         }
 
       val mapEntry =
@@ -548,8 +557,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
 
     // If there are entries left without a matching item, they got a new articleId and must be removed and (in the next sync) new inserted to snapcardster
-    val needToRemove: Seq[ImportConfirmation] = (if (added) entries.filter(e => !items.exists(i => i.collectionId == e.collectionId.getOrElse(-1))) else Nil).map { x =>
-      ImportConfirmation(x.collectionId.getOrElse(-1), successful = false, added = added, "needToRemoveFromSnapcardster")
+    val needToRemove: Seq[ImportConfirmation] = (if (added) entries.filter(e => !items.exists(i => i.collectionId == (if (e.collectionId == null) -1 else e.collectionId))) else Nil).map { x =>
+      ImportConfirmation(if (x.collectionId == null) -1 else x.collectionId, successful = false, added = added, "needToRemoveFromSnapcardster")
     }
 
     new Gson().toJson(items ++ needToRemove)
