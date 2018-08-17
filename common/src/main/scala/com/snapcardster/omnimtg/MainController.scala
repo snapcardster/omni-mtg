@@ -16,7 +16,7 @@ import org.w3c.dom.{Document, Node, NodeList}
 import scala.collection.mutable.ListBuffer
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
-  val title = "Omni MTG Sync Tool, v2018-08-16r"
+  val title = "Omni MTG Sync Tool, v2018-08-17r"
 
   val version = "2"
 
@@ -37,28 +37,18 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   private val prop: Properties = new Properties
   private val backupPath: Path = null
   //Paths.get("mkm_backup_" + System.currentTimeMillis() + ".csv")
-  protected val aborted: BooleanProperty = propFactory.newBooleanProperty(false)
-  protected val running: BooleanProperty = propFactory.newBooleanProperty(false)
-
-  protected val mkmAppToken: StringProperty = propFactory.newStringProperty("mkmApp", "", prop)
-
-  protected val mkmAppSecret: StringProperty = propFactory.newStringProperty("mkmAppSecret", "", prop)
-
-  protected val mkmAccessToken: StringProperty = propFactory.newStringProperty("mkmAccessToken", "", prop)
-
-  protected val mkmAccessTokenSecret: StringProperty = propFactory.newStringProperty("mkmAccessTokenSecret", "", prop)
-
-  protected val snapUser: StringProperty = propFactory.newStringProperty("snapUser", "", prop)
-
-  protected val snapPassword: StringProperty = propFactory.newStringProperty("snapPassword", "", prop)
-
-  protected val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
-
-  protected val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
-
-  protected val interval: IntegerProperty = propFactory.newIntegerProperty("interval", 180, prop)
-
-  protected val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
+  private val aborted: BooleanProperty = propFactory.newBooleanProperty(false)
+  private val running: BooleanProperty = propFactory.newBooleanProperty(false)
+  private val mkmAppToken: StringProperty = propFactory.newStringProperty("mkmApp", "", prop)
+  private val mkmAppSecret: StringProperty = propFactory.newStringProperty("mkmAppSecret", "", prop)
+  private val mkmAccessToken: StringProperty = propFactory.newStringProperty("mkmAccessToken", "", prop)
+  private val mkmAccessTokenSecret: StringProperty = propFactory.newStringProperty("mkmAccessTokenSecret", "", prop)
+  private val snapUser: StringProperty = propFactory.newStringProperty("snapUser", "", prop)
+  private val snapPassword: StringProperty = propFactory.newStringProperty("snapPassword", "", prop)
+  private val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
+  private val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
+  private val interval: IntegerProperty = propFactory.newIntegerProperty("interval", 180, prop)
+  private val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
 
   var backupFirst = true
 
@@ -226,7 +216,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     info.append(outputPrefix() + "• Snapcardster to MKM, changes at MKM:\n")
     val json = loadChangedFromSnap()
 
-    output.setValue(outputPrefix() + snapChangedEndpoint + "\n" + json)
+    println(snapChangedEndpoint + "\n" + json)
+
     val list = getChangeItems(json)
 
     val removedOrReservedItems = list.flatMap { parts =>
@@ -236,7 +227,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         Nil
       }
     }
-
 
     info.append(
       "Will remove " + removedOrReservedItems.length + " items...\n"
@@ -496,13 +486,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     s"""{"error": s"Returned HTTP code ${mkm.responseCode}, exception: ${errorText(mkm.lastError)}"}"""
   }
 
-  def getConfirmation(xml: String, tagName: String, entries: Seq[SellerDataChanged], added: Boolean): String = {
+  def getConfirmation(xml: String, tagName: String, entriesInRequest: Seq[SellerDataChanged], added: Boolean): String = {
     val ex = nativeProvider.saveToFile("xml-" + tagName + "-" + System.currentTimeMillis + ".xml", xml, null)
     if (ex == null) {
       println("Failed writing info xml: " + ex)
     }
 
-    val lst = try {
+    val tags = try {
       xmlList(getXml(xml).getElementsByTagName(tagName))
     } catch {
       case x: Throwable =>
@@ -510,11 +500,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         Nil
     }
 
-
     val buf = new ListBuffer[SellerDataChanged]
-    buf.append(entries: _*)
+    buf.append(entriesInRequest: _*)
 
-    val items: Seq[ImportConfirmation] = lst.flatMap { x =>
+    val xmlItems: Seq[ImportConfirmation] = tags.flatMap { x =>
       val xs = xmlList(x.getChildNodes)
       val success = java.lang.Boolean.parseBoolean(xs.find(_.getNodeName == "success").get.getTextContent)
       val message = xs.find(_.getNodeName == "message").map(_.getTextContent)
@@ -557,11 +546,23 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
 
     // If there are entries left without a matching item, they got a new articleId and must be removed and (in the next sync) new inserted to snapcardster
-    val needToRemove: Seq[ImportConfirmation] = (if (added) entries.filter(e => !items.exists(i => i.collectionId == (if (e.collectionId == null) -1 else e.collectionId))) else Nil).map { x =>
-      ImportConfirmation(if (x.collectionId == null) -1 else x.collectionId, successful = false, added = added, "needToRemoveFromSnapcardster")
-    }
-
-    new Gson().toJson(items ++ needToRemove)
+    val needToRemove: Array[ImportConfirmation] =
+      if (added) {
+        entriesInRequest.filter(e =>
+          !xmlItems.exists(i =>
+            i.collectionId == (if (e.collectionId == null) -1 else e.collectionId)
+          )).map { x =>
+          ImportConfirmation(
+            if (x.collectionId == null) -1 else x.collectionId,
+            successful = false,
+            added = added,
+            "needToRemoveFromSnapcardster"
+          )
+        }.toArray
+      } else {
+        Array()
+      }
+    new Gson().toJson((xmlItems ++ needToRemove).toArray)
   }
 
   override def getThread: Thread = thread

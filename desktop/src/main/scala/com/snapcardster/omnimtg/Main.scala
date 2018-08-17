@@ -60,6 +60,7 @@ class MainGUI extends Application {
       controller.getOutput.setValue("Closing...")
       controller.getAborted.setValue(true)
       controller.getThread.interrupt()
+      // System.exit(0)
     }
     val pane = getStage
 
@@ -94,7 +95,7 @@ class MainGUI extends Application {
     }, 1, 3)
     grid.add(new Label("📆 Next sync in"), 0, 4)
     grid.add(set(new JFXTextField) { x =>
-      linkTo(x, controller.getnextSync.getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
+      linkTo(x, controller.getnextSync().getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
       x.setDisable(true)
     }, 1, 4)
 
