@@ -470,11 +470,11 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     */
   def getXml(xmlDoc: String): Document = {
     val dbFactory = DocumentBuilderFactory.newInstance
-    dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-    dbFactory.setFeature("http://xml.org/sax/features/external-general-entities", false)
-    dbFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-    dbFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
-    dbFactory.setXIncludeAware(false)
+    //dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+    //dbFactory.setFeature("http://xml.org/sax/features/external-general-entities", false)
+    //dbFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+    //dbFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+    //dbFactory.setXIncludeAware(false)
     dbFactory.setExpandEntityReferences(false)
     val dBuilder = dbFactory.newDocumentBuilder
     val doc = dBuilder.parse(new ByteArrayInputStream(xmlDoc.getBytes("UTF-8")))

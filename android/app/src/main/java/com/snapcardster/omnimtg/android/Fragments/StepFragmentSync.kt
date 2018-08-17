@@ -18,6 +18,7 @@ import org.jetbrains.anko.uiThread
 
 
 class StepFragmentSync : StepFragment(), BlockingStep {
+    val slider_offset = 30
     override fun onCreateView(inflater: LayoutInflater?, container: ViewGroup?, savedInstanceState: Bundle?): View? {
 
         //initialize your UI
@@ -35,12 +36,12 @@ class StepFragmentSync : StepFragment(), BlockingStep {
         })
 
         controller.interval.value = controller.interval.value // Call Listener to set Text
-        view.card_sync_settings_slider.progress = controller.interval.value
+        view.card_sync_settings_slider.progress = controller.interval.value - slider_offset
 
         view.card_sync_settings_slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
                 if (p2) {
-                    controller.interval.value = p1 + 10
+                    controller.interval.value = p1 + slider_offset
                 }
             }
 

@@ -5,6 +5,7 @@ import java.net.{HttpURLConnection, URL}
 
 class SnapConnector {
   def call(requestURL: String, method: String, auth: String = null, body: String = null): String = {
+    System.out.println(auth + ", " + method + ": " + requestURL + " -> " + body)
     val connection: HttpURLConnection = new URL(requestURL).openConnection.asInstanceOf[HttpURLConnection]
     if (auth !=null){
       connection.addRequestProperty("Authorization", auth)
