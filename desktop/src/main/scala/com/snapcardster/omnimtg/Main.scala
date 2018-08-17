@@ -18,6 +18,8 @@ import javafx.scene.layout._
 import javafx.scene.text.Font
 import javafx.stage.Stage
 
+import scala.util.Try
+
 object Main {
   def main(args: Array[String]): Unit = {
     Application.launch(classOf[MainGUI], args: _*)
@@ -204,8 +206,12 @@ class MainGUI extends Application {
   def pasteButton(mode: String): Button = {
     set(new JFXButton("📋 Paste from Clipboard")) { x =>
       x.setStyle(button2Css)
-      val data = String.valueOf(Toolkit.getDefaultToolkit.getSystemClipboard.getData(DataFlavor.stringFlavor))
-      x.setOnMouseClicked(_ => controller.insertFromClip(mode, data))
+      x.setOnMouseClicked { _ =>
+        val data = Try(String.valueOf(Toolkit.getDefaultToolkit.getSystemClipboard.getData(DataFlavor.stringFlavor))).toOption.getOrElse("")
+        if (data != "") {
+          controller.insertFromClip(mode, data)
+        }
+      }
     }
   }
 
