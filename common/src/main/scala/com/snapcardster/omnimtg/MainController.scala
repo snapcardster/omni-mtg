@@ -16,7 +16,7 @@ import org.w3c.dom.{Document, Node, NodeList}
 import scala.collection.mutable.ListBuffer
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
-  val title = "Omni MTG Sync Tool, v2018-08-17r"
+  val title = "Omni MTG Sync Tool, v2018-11-12"
 
   val version = "2"
 
