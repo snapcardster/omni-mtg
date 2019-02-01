@@ -7,18 +7,15 @@ import java.util.regex._
 import java.util.zip._
 import java.util.{Date, Properties}
 
-import com.google.gson.{Gson, GsonBuilder}
-import com.snapcardster.omnimtg.Interfaces._
 import javax.xml.parsers.DocumentBuilderFactory
-import org.apache.commons.lang.StringUtils
 import org.w3c.dom.{Document, Node, NodeList}
 
 import scala.collection.mutable.ListBuffer
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
-  val title = "Omni MTG Sync Tool, v2018-11-12"
+  val title = "Omni MTG Sync Tool, v2019-02-01"
 
-  val version = "2"
+  val version = "3"
 
   // TODO: change back to test after test
   val snapBaseUrl: String = "https://api.snapcardster.com"
