@@ -1,13 +1,13 @@
 package sample;
 
-import javafx.scene.Node;
-import javafx.scene.layout.Pane;
 import jdk.nashorn.api.scripting.JSObject;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
 
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
+import javax.swing.*;
+import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.io.*;
 import java.lang.reflect.Method;
@@ -16,7 +16,9 @@ import java.net.URLClassLoader;
 import java.net.URLConnection;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.List;
 import java.util.jar.Attributes;
@@ -26,20 +28,62 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import static javax.swing.text.DefaultCaret.ALWAYS_UPDATE;
+
 @SuppressWarnings("unchecked")
 public class Main
 //        extends Application
 {
     private static final String URL = "https://api.github.com/repos/snapcardster/omni-mtg/releases";
-    //  private Label label = null;
+    // private Label label = null;
+    private JTextArea label;
+    private JWindow win;
 
     private void log(String s) {
+        if (label == null) {
+            label = new JTextArea();
+            // label.setEditable(false);
+            label.setLineWrap(true);
+            label.setAutoscrolls(true);
+            label.setWrapStyleWord(true);
+            label.setForeground(Color.BLACK);
+            DefaultCaret caret = (DefaultCaret) label.getCaret();
+            caret.setUpdatePolicy(ALWAYS_UPDATE);
+            /*JButton b = new JButton();
+            b.setEnabled(false);
+            b.setText("OK");*/
+
+            //  ImageIcon image = new ImageIcon(Base64.getDecoder().decode(Gif.B64()));
+            //     JLabel background = new JLabel(image);
+
+            win = new JWindow();
+            win.setContentPane(label);
+            win.setLocationRelativeTo(null);
+            win.setSize(400, 300);
+            win.setVisible(true);
+        }
+        String t = label.getText() + "\n" + s;
+        label.setText(t);
+        label.setCaretPosition(t.length());
+
         System.out.println(s);
     /*    if (label != null) {
             Platform.runLater(() ->
                     label.setText(label.getText() + "\n" + s)
             );
         }*/
+    }
+
+    private String savedText = "";
+
+    private void logProgressPrepare() {
+        savedText = label.getText();
+    }
+
+    private void logProgress(long totalBytesRead) {
+        if (label != null) {
+            label.setText(savedText + "\n" + mb(totalBytesRead) + "MB");
+        }
     }
 
     /*@Override
@@ -70,12 +114,13 @@ public class Main
 
     private void checkAndRun() {
         try {
+
             Map<Date, String> items = new HashMap<>();
             try {
+                log("Omni MTG Updater\nChecking updates... (this may take some seconds)");
                 StringBuilder sb = readFromGitApi();
 
                 String json = sb.toString();
-                log("Code Repository found");
                 for (Map<String, ScriptObjectMirror> x : readJson(json)) {
                     Collection<Object> assets1 = x.get("assets").values();
 
@@ -85,6 +130,7 @@ public class Main
                     Date d = new Date(readTime(published_at));
                     items.put(d, assets.get("browser_download_url") + "");
                 }
+                log("Code Repository found, there are " + items.size() + " releases.");
             } catch (Exception e) {
                 log(e.toString());
             }
@@ -102,7 +148,7 @@ public class Main
                 }).start();
             } else {
                 Date max = items.keySet().stream().max(Comparator.naturalOrder()).orElse(new Date());
-                log("Newest release: " + max);
+                log("Newest release from " + max);
 
                 String currentDir = new File("").getAbsolutePath();
                 File targetFile = Paths.get(currentDir, "downloaded" + max.getTime() + ".zip").toFile();
@@ -119,31 +165,7 @@ public class Main
                         unzipAndStart(unzip, targetFile);
                     }
                 } else {
-                    /*Button downloadIt = new Button("Download it");
-                    downloadIt.setOnMouseClicked(x -> {*/
-                    try {
-
-                        log("Downloading... (this may may take around 5 minutes)\n" + downloadUrl);
-                        new Thread(() -> {
-                            try {
-                                Thread.sleep(100);
-                                long len = downloadBinaryFile(downloadUrl, targetFile);
-                                log("Done: approx " + Math.round(len / 1000.0 / 1000.0 * 100) / 100.0 + " MB loaded, unzipping...");
-
-                                unzipAndStart(unzip, targetFile);
-
-                            } catch (Exception e) {
-                                log(e.toString());
-                            }
-                        }).start();
-                        /*if(!f.createNewFile()) {
-                            throw new Exception("could not create file " + f);
-                        }*/
-                    } catch (Exception e) {
-                        log(e.toString());
-                    }
-                   /* });
-                    add(root, downloadIt);*/
+                    downloadAndStart(targetFile, unzip, downloadUrl);
                 }
             }
         } catch (Exception e) {
@@ -151,10 +173,43 @@ public class Main
         }
     }
 
+    private void downloadAndStart(File targetFile, File unzip, String downloadUrl) {
+    /*Button downloadIt = new Button("Download it");
+    downloadIt.setOnMouseClicked(x -> {*/
+        try {
+            log("Downloading... (this may may take around 5 minutes)\n" + downloadUrl);
+            new Thread(() -> {
+                try {
+                    Thread.sleep(100);
+                    long len = downloadBinaryFile(downloadUrl, targetFile);
+                    log("Done: approx " + mb(len) + " MB loaded, unzipping...");
+
+                    unzipAndStart(unzip, targetFile);
+
+                } catch (Exception e) {
+                    log(e.toString());
+                }
+            }).start();
+            /*if(!f.createNewFile()) {
+                throw new Exception("could not create file " + f);
+            }*/
+        } catch (Exception e) {
+            log(e.toString());
+        }
+                   /* });
+                    add(root, downloadIt);*/
+    }
+
+    private double mb(long len) {
+        return Math.round(len / 1000.0 / 1000.0 * 1000) / 1000.0;
+    }
+
     private void unzipAndStart(File unzip, File downloadedZip) throws Exception {
         if (!unzip.exists() || unzip.delete()) {
             if (unzip.mkdirs()) {
                 unzipFile(downloadedZip, unzip);
+                log("Done. Copying old preferences...");
+                copyPreferences(unzip);
                 log("Done. Starting...");
                 startJar(unzip);
             } else {
@@ -165,7 +220,39 @@ public class Main
         }
     }
 
+    private void copyPreferences(File unzip) throws IOException {
+        Map<Date, File> unzipDirs = new TreeMap<>();
+        String[] list = unzip.getParentFile().list();
+        for (String subDir : list == null ? new String[0] : list) {
+            File file = new File(subDir);
+            String name = file.getName();
+            // System.out.println(name);
+            if (name.matches("unzip[0-9]+")) {
+                Date d = new Date(Long.parseLong(name.replace("unzip", "")));
+                unzipDirs.put(d, file);
+            }
+        }
+
+        Collection<Date> keysSorted = unzipDirs.keySet();
+        File pref = null;
+        for (Date key : keysSorted) {
+            if (pref == null) {
+                File currentUnzipDir = unzipDirs.get(key);
+                File prop = Paths.get(currentUnzipDir.getAbsolutePath(), "omni-mtg", "secret.properties").toFile();
+                if (prop.exists()) {
+                    pref = prop;
+                    Files.copy(pref.toPath(), Paths.get(unzip.getParentFile().getAbsolutePath(), "secret.properties"), StandardCopyOption.REPLACE_EXISTING);
+                    Files.copy(pref.toPath(), Paths.get(unzip.getAbsolutePath(), "omni-mtg", "secret.properties"), StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+        }
+    }
+
+
     private void startJar(File unzip) {
+        //log("TDOD");
+        //if ("".isEmpty()) return;
+
         String o = Paths.get(unzip.getAbsolutePath(), "omni-mtg").toFile().getAbsolutePath();
         // String p = Paths.get(o, "start omni-mtg.bat").toFile().getAbsolutePath();
         try {
@@ -173,7 +260,7 @@ public class Main
             System.setProperty("user.dir", o);
             //ProcessBuilder process = new ProcessBuilder();
             log("Ready!"); // Please start \"start omni-mtg.bat\" :) You may close this program");
-            Desktop.getDesktop().open(Paths.get(o, "start omni-mtg.bat").toFile());
+            // Desktop.getDesktop().open(Paths.get(o, "start omni-mtg.bat").toFile());
             //Runtime.getRuntime().exec(new String[]{"explorer", o});
             // new String[]{"jPortable/bin/java", "-jar", "omni-mtg-java-archive/omni-mtg.jar"});
             //Runtime.getRuntime().exec("\"jPortable/bin/java\" -jar \"omni-mtg-java-archive/omni-mtg.jar\"");
@@ -194,8 +281,9 @@ public class Main
             Method main = cls.getDeclaredMethod("main", String[].class); // get the main method using reflection
             System.out.println(main);
             String[] args = {};
-            main.invoke(null, new Object[]{args}); // static methods are invoked with null as first argument
+            win.dispose();
 
+            main.invoke(null, new Object[]{args}); // static methods are invoked with null as first argument
             /*
             final String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
             final File currentJar = file;
@@ -216,11 +304,29 @@ public class Main
         }
     }
 
-    private long downloadBinaryFile(String downloadUrl, File targetFile) throws IOException {
+    private long downloadBinaryFile(String downloadUrl, File targetFile) {
+        /*
         URL website = new URL(downloadUrl);
         ReadableByteChannel rbc = Channels.newChannel(website.openStream());
         FileOutputStream fos = new FileOutputStream(targetFile);
         return fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+        */
+        long totalBytesRead = 0L;
+        try (BufferedInputStream in = new BufferedInputStream(new URL(downloadUrl).openStream());
+             FileOutputStream fileOutputStream = new FileOutputStream(targetFile)) {
+            byte dataBuffer[] = new byte[64 * 1024];
+            int bytesRead;
+            log("Downloading...");
+            logProgressPrepare();
+            while ((bytesRead = in.read(dataBuffer, 0, dataBuffer.length)) != -1) {
+                fileOutputStream.write(dataBuffer, 0, bytesRead);
+                logProgress(totalBytesRead);
+                totalBytesRead += bytesRead;
+            }
+        } catch (IOException e) {
+            log(e.toString());
+        }
+        return totalBytesRead;
     }
 
     private StringBuilder readFromGitApi() throws IOException {
@@ -308,7 +414,9 @@ public class Main
             ZipFile zip = new ZipFile(file);
             String newPath = extractFolder.getAbsolutePath();
 
-            new File(newPath).mkdir();
+            if (!new File(newPath).mkdir()) {
+                System.out.println("mkdir for " + newPath + " failed");
+            }
             Enumeration zipFileEntries = zip.entries();
 
             // Process each entry
@@ -322,7 +430,9 @@ public class Main
                 File destinationParent = destFile.getParentFile();
 
                 // create the parent directory structure if needed
-                destinationParent.mkdirs();
+                if (!destinationParent.mkdirs()) {
+                    System.out.println("mkdirs for " + destinationParent + " failed");
+                }
 
                 if (!entry.isDirectory()) {
                     BufferedInputStream is = new BufferedInputStream(zip
@@ -366,3 +476,29 @@ public class Main
         return destFile;
     }*/
 }
+
+/*
+ * https://stackoverflow.com/a/18051925/773842
+ */
+/*
+class BackgroundImageJFrame extends JFrame {
+    public BackgroundImageJFrame(JComponent a, JComponent b) {
+
+        setSize(400, 400);
+        setVisible(true);
+
+        setLayout(new BorderLayout());
+        ImageIcon image = new ImageIcon(Base64.getDecoder().decode(Gif.B64()));
+        JLabel background = new JLabel(image);
+
+        add(background);
+
+        background.setLayout(new FlowLayout());
+
+        background.add(a);
+        if (b != null) {
+            background.add(b);
+        }
+    }
+}
+*/
