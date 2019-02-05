@@ -4,7 +4,7 @@ import java.io._
 import java.nio.file.{Path, Paths}
 import java.util.{Base64, Properties}
 
-import com.snapcardster.omnimtg.Interfaces.{MainControllerInterface, NativeFunctionProvider, StringProperty}
+import com.snapcardster.omnimtg.Interfaces.{MainControllerInterface, NativeFunctionProvider, _}
 import javax.xml.bind.DatatypeConverter
 
 object DesktopFunctionProvider extends NativeFunctionProvider {

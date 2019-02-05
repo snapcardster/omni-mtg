@@ -7,9 +7,8 @@ import java.awt.*;
 import static javax.swing.text.DefaultCaret.ALWAYS_UPDATE;
 
 public class ShowLog {
-
-    JTextArea label;
-    JFrame win;
+    private JTextArea label;
+    private JFrame win;
 
     public void log(String s) {
 

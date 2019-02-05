@@ -3,12 +3,13 @@ package com.snapcardster.omnimtg;
 import jdk.nashorn.api.scripting.JSObject;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
 
+import javax.imageio.ImageIO;
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.lang.reflect.Method;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLConnection;
@@ -24,7 +25,6 @@ import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-
 
 @SuppressWarnings("unchecked")
 public class AutoUpdater {
@@ -55,7 +55,7 @@ public class AutoUpdater {
         }
     }
 
-    void log(String s) {
+    private void log(String s) {
         showLog.log(s);
         /* if (label != null) {
             Platform.runLater(() ->
@@ -64,13 +64,13 @@ public class AutoUpdater {
         }*/
     }
 
-    String savedText = "";
+    private String savedText = "";
 
-    void logProgressPrepare() {
+    private void logProgressPrepare() {
         savedText = showLog.getText();
     }
 
-    void logProgress(long totalBytesRead) {
+    private void logProgress(long totalBytesRead) {
         showLog.setText(savedText + "\n" + mb(totalBytesRead) + "MB");
     }
 
@@ -137,7 +137,7 @@ public class AutoUpdater {
                 String downloadUrl = items.get(max);
                 if (targetFile.exists() && unzip.exists()) {
                     log("Up to date and unzipped! Starting...");
-                    startJar(unzip);
+                    startJarInDir(unzip);
                     //} else {
                     //  log("Downloaded found, unzipping...");
 //                        unzipAndStart(unzip, targetFile);
@@ -190,18 +190,18 @@ public class AutoUpdater {
                     add(root, downloadIt);*/
     }
 
-    double mb(long len) {
-        return Math.round(len / 1000.0 / 1000.0 * 1000) / 1000.0;
+    double mb(long bytes) {
+        return Math.round(bytes / 1000.0 / 1000.0 * 1000) / 1000.0;
     }
 
-    void unzipAndStart(File unzip, File downloadedZip) throws Exception {
+    private void unzipAndStart(File unzip, File downloadedZip) throws Exception {
         if (!unzip.exists() || unzip.delete()) {
             if (unzip.mkdirs()) {
                 unzipFile(downloadedZip, unzip);
                 log("Done. Copying old preferences...");
                 copyPreferences(unzip);
                 log("Done. Starting...");
-                startJar(unzip);
+                startJarInDir(unzip);
             } else {
                 throw new Exception("Could not create folders");
             }
@@ -238,16 +238,20 @@ public class AutoUpdater {
         }
     }
 
+    void startJarInDir(File unzipDir) {
+        String o = Paths.get(unzipDir.getAbsolutePath(), "omni-mtg").toFile().getAbsolutePath();
+        System.setProperty("user.dir", o);
+        File file = Paths.get(o, "omni-mtg-java-archive", "omni-mtg.jar").toFile();
+        startJar(file);
+    }
 
-    void startJar(File unzip) {
+    void startJar(File file) {
         //log("TDOD");
         //if ("".isEmpty()) return;
 
-        String o = Paths.get(unzip.getAbsolutePath(), "omni-mtg").toFile().getAbsolutePath();
         // String p = Paths.get(o, "start omni-mtg.bat").toFile().getAbsolutePath();
         try {
             // new ProcessBuilder("cd " + o).start().waitFor();
-            System.setProperty("user.dir", o);
             //ProcessBuilder process = new ProcessBuilder();
             log("Ready!"); // Please start \"start omni-mtg.bat\" :) You may close this program");
             // Desktop.getDesktop().open(Paths.get(o, "start omni-mtg.bat").toFile());
@@ -258,7 +262,6 @@ public class AutoUpdater {
 
             // Of course it's possible you don't know the main class from the JAR file. Using java.util.jar.JarFile and java.util.jar.Manifest you can retrieve it:
 
-            File file = Paths.get(o, "omni-mtg-java-archive", "omni-mtg.jar").toFile();
             JarFile jarFile = new JarFile(file);
             Manifest manifest = jarFile.getManifest(); // warning: can be null
             Attributes attributes = manifest.getMainAttributes();
@@ -407,12 +410,12 @@ public class AutoUpdater {
             if (!new File(newPath).mkdir()) {
                 System.out.println("mkdir for " + newPath + " failed");
             }
-            Enumeration zipFileEntries = zip.entries();
+            Enumeration<ZipEntry> zipFileEntries = (Enumeration<ZipEntry>) zip.entries();
 
             // Process each entry
             while (zipFileEntries.hasMoreElements()) {
                 // grab a zip file entry
-                ZipEntry entry = (ZipEntry) zipFileEntries.nextElement();
+                ZipEntry entry = zipFileEntries.nextElement();
                 String currentEntry = entry.getName();
 
                 File destFile = new File(newPath, currentEntry);
@@ -466,27 +469,9 @@ public class AutoUpdater {
         return destFile;
     }*/
 
-    void sendEmail(String content) throws Exception {
-        String auth = "_ANONYMOUS_WEB_cbea1255fd40c800,8dfe272393798e53c07d34bcaf90de9ae4d440fdbcbc36dd9465a8f1c4b3a59c";
-        long time = System.currentTimeMillis();
-        String replace = (System.getProperty("user.name") + "@" + new Date() + "\n" + content).replace("\\", "\\\\").replace('"', '\'').replace("\n", "\\n");
-        String rawData = "{ \"id\": 0, \"from\": \"_ANONYMOUS_WEB_cbea1255fd40c800\", \"to\": \"Karsten P\", \"timestamp\": " + time + ", \"message\": \"" + replace + "\" }";
-
-        String type = "application/json";
-        // String encodedData = URLEncoder.encode(rawData, "UTF-8");
-        URL u = new URL("https://api.snapcardster.com/messages");
-        HttpURLConnection conn = (HttpURLConnection) u.openConnection();
-        conn.setDoOutput(true);
-        conn.setDoInput(true);
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Content-Type", type);
-        conn.setRequestProperty("Authorization", auth);
-        OutputStream os = conn.getOutputStream();
-        os.write(rawData.getBytes());
-        os.flush();
-        os.close();
-        System.out.println(conn.getResponseCode() + ": " + conn.getResponseMessage());
-        conn.disconnect();
+    BufferedImage getImage() throws IOException {
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(Base64.getDecoder().decode(Gif.B64())));
+        return image;
     }
 }
 

@@ -13,6 +13,7 @@ public class Gif {
         try {
             return new String(Files.readAllBytes(Paths.get("image.b64")));
         } catch (IOException e) {
+            e.printStackTrace();
             return "";
         }
     }
