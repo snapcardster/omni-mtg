@@ -4,7 +4,9 @@ secret.properties
 *.ipr
 *.iws
 .idea
-out
+out/test
+out/com
+out/production
 
 build
 .classpath
