@@ -5,9 +5,9 @@
     <h2 align="center">
      An Open Source Omni-Channel Solution for Magic: The Gathering
     <h2>
-    <big>
+    <h2 align="center">
       <a href="https://github.com/snapcardster/omni-mtg/releases/download/3/omni-mtg.zip">Download the auto-updater here</a>
-    </big>
+    </h2>
 </p>
 
 
