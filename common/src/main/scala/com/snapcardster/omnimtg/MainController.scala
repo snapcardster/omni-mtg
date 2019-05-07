@@ -7,30 +7,28 @@ import java.util.regex._
 import java.util.zip._
 import java.util.{Date, Properties}
 
-import com.google.gson.{Gson, GsonBuilder}
-import com.snapcardster.omnimtg.Interfaces._
 import javax.xml.parsers.DocumentBuilderFactory
-import org.apache.commons.lang.StringUtils
 import org.w3c.dom.{Document, Node, NodeList}
 
 import scala.collection.mutable.ListBuffer
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
-  val title = "Omni MTG Sync Tool, v3 / 2019-02-04"
+  val title = "Omni MTG Sync Tool, v4 / 2019-05-06"
 
-  // TODO: when scryfall deployed: val version = "3"
-  val version = "2"
+  // when scryfall deployed: 3, before: 2
+  val version = "3"
 
   // TODO: change back to test after test
   val snapBaseUrl: String = "https://api.snapcardster.com"
-  // val snapBaseUrl: String = "https://dev.snapcardster.com" //"https://test.snapcardster.com"
+  //val snapBaseUrl: String = "https://dev.snapcardster.com"
+  //val snapBaseUrl: String =  "https://test.snapcardster.com"
   //val snapBaseUrl: String = "http://localhost:9000"
 
   val snapCsvEndpoint: String = snapBaseUrl + s"/importer/sellerdata/from/csv/$version"
   val snapLoginEndpoint: String = snapBaseUrl + "/auth"
   val snapChangedEndpoint: String = snapBaseUrl + s"/marketplace/sellerdata/changed/$version"
 
-  val mkmBaseUrl: String = "https://www.mkmapi.eu/ws/v2.0"
+  val mkmBaseUrl: String = "https://api.cardmarket.com/ws/v2.0"
   val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
   val mkmStockFileEndpoint: String = mkmBaseUrl + "/output.json/stock/file"
 
@@ -163,7 +161,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
       val csv = loadMkmStock()
 
-      nativeProvider.saveToFile(s"backup_${System.currentTimeMillis()}.csv", csv, nativeBase)
+      nativeProvider.saveToFile(s"backup_${System.currentTimeMillis}.csv", csv, nativeBase)
 
       backupFirst = false
     }
@@ -321,7 +319,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     if (mkm.request(mkmStockFileEndpoint, "GET", null, null, hasOutput)) {
 
       val builder = new GsonBuilder
-      val obj = new Gson().fromJson(mkm.responseContent(), classOf[MKMSomething])
+      val obj = new Gson().fromJson(mkm.responseContent, classOf[MKMSomething])
       System.out.println(obj.toString)
       val result = obj.stock
 

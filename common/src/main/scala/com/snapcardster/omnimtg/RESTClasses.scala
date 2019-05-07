@@ -1,6 +1,5 @@
 package com.snapcardster.omnimtg
 
-
 case class Condition(
                       longString: String,
                       shortString: String,
@@ -20,8 +19,8 @@ case class MKMSomething(stock: String)
 
 case class SellerDataChanged(
                               `type`: String,
-                              externalId: java.lang.Long,
-                              collectionId: java.lang.Long,
+                              externalId: Long,
+                              collectionId: Long,
                               info: CsvFormat
                             )
 
@@ -37,11 +36,11 @@ case class CsvFormat(
                       condition: Condition,
                       language: Language,
                       meta: String,
-                      cardId: java.lang.Long,
+                      cardId: Long,
                       editionName: String,
                       signed: Boolean,
                       altered: Boolean,
-                      price: java.lang.Double,
-                      externalId: java.lang.Long,
-                      collectionId: java.lang.Long
+                      price: Double,
+                      externalId: Long,
+                      collectionId: Long
                     )
