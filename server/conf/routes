@@ -1,0 +1,8 @@
+
+GET         /logs               controllers.ServerMainController.getLogs
+GET         /status             controllers.ServerMainController.getStatus
+GET         /settings           controllers.ServerMainController.getSettings
+POST        /settings           controllers.ServerMainController.postSettings
+POST        /exitRequest        controllers.ServerMainController.postExitRequest
+
+#GET /docs controllers.SwaggerController
