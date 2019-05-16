@@ -41,6 +41,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   //Paths.get("mkm_backup_" + System.currentTimeMillis() + ".csv")
   private val aborted: BooleanProperty = propFactory.newBooleanProperty(false)
   private val running: BooleanProperty = propFactory.newBooleanProperty(false)
+  private val inSync: BooleanProperty = propFactory.newBooleanProperty(false)
   private val mkmAppToken: StringProperty = propFactory.newStringProperty("mkmApp", "", prop)
   private val mkmAppSecret: StringProperty = propFactory.newStringProperty("mkmAppSecret", "", prop)
   private val mkmAccessToken: StringProperty = propFactory.newStringProperty("mkmAccessToken", "", prop)
@@ -51,8 +52,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   private val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
   private val interval: IntegerProperty = propFactory.newIntegerProperty("interval", 180, prop)
   private val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
-
-  var backupFirst = true
+  private val request: ObjectProperty = propFactory.newObjectProperty(null)
+  private var backupFirst = true
 
   def insertFromClip(mode: String, data: String): Unit = {
     mode match {
@@ -86,6 +87,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   def start(nativeBase: Object): Unit = {
     readProperties(nativeBase)
     running.setValue(true)
+
+    thread = run(nativeBase)
+  }
+
+  def startLoop(nativeBase: Object): Unit = {
+    readProperties(nativeBase)
 
     thread = run(nativeBase)
   }
@@ -133,9 +140,16 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
           if (running.getValue) {
             nextSync.setValue(0)
             try {
+              inSync.setValue(true)
               sync(nativeBase)
+              inSync.setValue(false)
             } catch {
-              case e: Exception => handleEx(e)
+              case e: Exception =>
+                handleEx(e)
+                inSync.setValue(false)
+            }
+            if (request.getValue != null) {
+              request.getValue().asInstanceOf[Runnable].run()
             }
 
             val seconds = interval.getValue.intValue
@@ -593,5 +607,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   override def getInterval: IntegerProperty = interval
 
-  override def getnextSync(): IntegerProperty = nextSync
+  override def getNextSync(): IntegerProperty = nextSync
+
+  override def getInSync(): BooleanProperty = inSync
+
+  override def getRequest(): ObjectProperty = request
 }

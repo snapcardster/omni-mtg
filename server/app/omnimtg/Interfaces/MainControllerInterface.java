@@ -36,7 +36,11 @@ public interface MainControllerInterface {
 
     IntegerProperty getInterval();
 
-    IntegerProperty getnextSync();
+    IntegerProperty getNextSync();
+
+    BooleanProperty getInSync();
+
+    ObjectProperty getRequest();
 
     void loginSnap();
 

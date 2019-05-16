@@ -1,20 +1,20 @@
 package omnimtg
 
+import omnimtg.Interfaces.PropertyFactory
 import java.lang
 import java.util.Properties
 
-import javafx.beans.property.{SimpleBooleanProperty, SimpleIntegerProperty, SimpleStringProperty}
+import javafx.beans.property._
 import javafx.beans.value.{ChangeListener, ObservableValue}
-import omnimtg.Interfaces._
 
-object JavaFXPropertyFactory extends PropertyFactory {
-  override def newBooleanProperty(initialValue: lang.Boolean): BooleanProperty = new JavaFXBooleanProperty(initialValue)
+object JavaFXPropertyFactory extends omnimtg.Interfaces.PropertyFactory {
+  override def newBooleanProperty(initialValue: lang.Boolean) = new JavaFXBooleanProperty(initialValue)
 
-  override def newStringProperty(initialValue: String): StringProperty = new JavaFXStringProperty(initialValue)
+  override def newStringProperty(initialValue: String) = new JavaFXStringProperty(initialValue)
 
-  override def newIntegerProperty(initialValue: Integer): IntegerProperty = new JavaFXIntegerProperty(initialValue)
+  override def newIntegerProperty(initialValue: Integer) = new JavaFXIntegerProperty(initialValue)
 
-  override def newStringProperty(name: String, value: String, prop: Properties): StringProperty = {
+  override def newStringProperty(name: String, value: String, prop: Properties): omnimtg.JavaFXStringProperty = {
     val stringProp = newStringProperty(value)
     val l = new ChangeListener[Any] {
       def changed(observable: ObservableValue[_], oldValue: Any, newValue: Any): Unit = {
@@ -25,10 +25,12 @@ object JavaFXPropertyFactory extends PropertyFactory {
     stringProp
   }
 
-  override def newIntegerProperty(name: String, initialValue: Integer, prop: Properties): JavaFXIntegerProperty = new JavaFXIntegerProperty(initialValue)
+  override def newIntegerProperty(name: String, initialValue: Integer, prop: Properties) = new JavaFXIntegerProperty(initialValue)
+
+  override def newObjectProperty(initialValue: Object) = new JavaFXObjectProperty(initialValue)
 }
 
-class JavaFXBooleanProperty extends BooleanProperty {
+class JavaFXBooleanProperty extends omnimtg.Interfaces.BooleanProperty {
   var nativeBase: SimpleBooleanProperty = _
 
   def this(value: Boolean) {
@@ -43,7 +45,7 @@ class JavaFXBooleanProperty extends BooleanProperty {
   override def getNativeBase: SimpleBooleanProperty = nativeBase
 }
 
-class JavaFXStringProperty extends StringProperty {
+class JavaFXStringProperty extends omnimtg.Interfaces.StringProperty {
   var nativeBase: SimpleStringProperty = _
 
   def this(value: String) {
@@ -62,7 +64,7 @@ class JavaFXStringProperty extends StringProperty {
   override def setValue(value: String, callListener: lang.Boolean): Unit = nativeBase.setValue(value)
 }
 
-class JavaFXIntegerProperty extends IntegerProperty {
+class JavaFXIntegerProperty extends omnimtg.Interfaces.IntegerProperty {
   var nativeBase: SimpleIntegerProperty = _
 
   def this(value: Integer) {
@@ -76,5 +78,22 @@ class JavaFXIntegerProperty extends IntegerProperty {
 
   override def getNativeBase: SimpleIntegerProperty = nativeBase
 
-  override def addListener(listener: scala.Any): Unit = ()
+  override def addListener(listener: Any): Unit = ()
+}
+
+class JavaFXObjectProperty extends omnimtg.Interfaces.ObjectProperty {
+  var nativeBase: SimpleObjectProperty[Object] = _
+
+  def this(value: Object) {
+    this()
+    this.nativeBase = new SimpleObjectProperty[Object](value)
+  }
+
+  override def setValue(value: Object): Unit = nativeBase.set(value)
+
+  override def getValue: Object = nativeBase.getValue
+
+  override def getNativeBase: SimpleObjectProperty[Object] = nativeBase
+
+  def addListener(listener: Any): Unit = ()
 }

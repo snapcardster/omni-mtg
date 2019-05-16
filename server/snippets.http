@@ -1,0 +1,33 @@
+POST http://localhost:9000/settings
+Content-Type: application/json
+
+{
+  "enabled": true, "intervalInSec": 180
+}
+
+###
+
+POST http://localhost:9000/settings
+Content-Type: application/json
+
+{
+  "enabled": false, "intervalInSec": 180
+}
+
+###
+
+POST http://localhost:9000/exitRequest
+
+###
+
+GET http://localhost:9000/logs
+
+###
+
+GET http://localhost:9000/status
+
+###
+
+GET http://localhost:9000/settings
+
+###

@@ -21,12 +21,6 @@ import javafx.stage.Stage
 
 import scala.util.Try
 
-/*object Main {
-  def main(args: Array[String]): Unit = {*/
-
-/*}
-}*/
-
 class MainGUI extends Application {
   val controller: MainController = new MainController(JavaFXPropertyFactory, DesktopFunctionProvider)
   val buttonCss = "--button-type: RAISED; -fx-background-color: blue; -fx-text-fill: white;"
@@ -98,7 +92,7 @@ class MainGUI extends Application {
     }, 1, 3)
     grid.add(new Label("📆 Next sync in"), 0, 4)
     grid.add(set(new JFXTextField) { x =>
-      linkTo(x, controller.getnextSync().getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
+      linkTo(x, controller.getNextSync().getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
       x.setDisable(true)
     }, 1, 4)
 

@@ -1,31 +1,38 @@
-import java.io.{BufferedReader, File, InputStreamReader}
+package app
 
-import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, Materializer}
 import controllers.ServerMainController
 import omnimtg.MainGUI
-import play.api._
+import java.io.{BufferedReader, File, InputStreamReader}
+import play.core.server.{AkkaHttpServer, ServerConfig}
+import akka.actor.ActorSystem
+import akka.stream.{ActorMaterializer, Materializer, _}
+import play.api.{DefaultApplication, Mode, Configuration, _}
 import play.api.http._
-import play.api.i18n.{DefaultLangs, DefaultMessagesApi}
+import play.api.i18n.{DefaultLangs, DefaultMessagesApi, _}
 import play.api.inject.{DefaultApplicationLifecycle, Injector, NewInstanceInjector, SimpleInjector}
-import play.api.mvc._
+import play.api.mvc.{PlayBodyParsers, _}
 import play.api.mvc.request.RequestFactory
 import play.api.routing.Router
 import play.api.routing.sird._
-import play.core.server.{AkkaHttpServer, ServerConfig}
 
 import scala.concurrent.ExecutionContext
 
-object MainClass {
-  def main(args: Array[String]) {
+class Main {}
+
+object MainApp extends App {
+  Main.main(args)
+}
+
+object Main {
+  def main(args: Array[String]): Unit = {
     if (!args.contains("headless")) {
       javafx.application.Application.launch(classOf[MainGUI], args: _*)
     } else {
       val confFile = new File(args.headOption.getOrElse("conf/application.conf"))
       println(confFile.getAbsolutePath)
-      val classLoader = MainClass.getClass.getClassLoader
-      val mode = Mode.Dev
-      val environment = new Environment(confFile, classLoader, mode)
+      val classLoader = Main.getClass.getClassLoader
+      val modeVal = Mode.Dev
+      val environment = new Environment(confFile, classLoader, modeVal)
       val conf = Configuration.load(environment)
 
       val injector: Injector =
@@ -67,9 +74,9 @@ object MainClass {
 
       Play.start(application)
       //println(Await.result(mainController.getStatus.apply(null), Duration.Inf))
-      val port = conf.underlying.getInt("serverPort")
+      val portVal = conf.underlying.getInt("serverPort")
       AkkaHttpServer.fromApplication(
-        application, ServerConfig(classLoader, new File("."), port = Some(port), mode = mode)
+        application, ServerConfig(classLoader, new File("."), port = Some(portVal), mode = modeVal)
       )
       println("Started, press Enter to exit")
       try {
