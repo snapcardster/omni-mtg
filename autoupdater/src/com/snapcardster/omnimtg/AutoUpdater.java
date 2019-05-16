@@ -242,11 +242,42 @@ public class AutoUpdater {
         String o = Paths.get(unzipDir.getAbsolutePath(), "omni-mtg").toFile().getAbsolutePath();
         System.setProperty("user.dir", o);
         File file = Paths.get(o, "omni-mtg-java-archive", "omni-mtg.jar").toFile();
-        startJar(file);
+        if (file.exists()) {
+            startJar(file);
+        } else {
+            boolean win = System.getProperty("os.name").toLowerCase().contains("windows");
+            File fileServerStarter = Paths.get(o, "bin", "omnimtg" + (win ? ".bat" : "")).toFile();
+            execBin(fileServerStarter);
+        }
+    }
+
+    void execBin(File absolutePath) {
+        try {
+            Runtime rt = Runtime.getRuntime();
+            //System.setProperty("user.dir", absolutePath.getParentFile().getAbsolutePath());
+            //rt.exec("./" + absolutePath.getName());
+            String absolutePath1 = absolutePath.getAbsolutePath();
+            log("Starting Server " + absolutePath1 + "...");
+            Process process = rt.exec(absolutePath1);
+            BufferedReader rd = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String line;
+            while ((line = rd.readLine()) != null) {
+                log(line);
+            }
+            BufferedReader rd2 = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line2;
+            while ((line2 = rd2.readLine()) != null) {
+                log(line2);
+            }
+            int retVal = process.waitFor();
+            log("Program exited with " + retVal);
+        } catch (Exception e) {
+            log(e);
+        }
     }
 
     void startJar(File file) {
-        //log("TDOD");
+        //log("TODO");
         //if ("".isEmpty()) return;
 
         // String p = Paths.get(o, "start omni-mtg.bat").toFile().getAbsolutePath();
