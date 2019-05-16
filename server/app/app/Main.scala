@@ -1,22 +1,5 @@
 package app
 
-import controllers.ServerMainController
-import omnimtg.MainGUI
-import java.io.{BufferedReader, File, InputStreamReader}
-import play.core.server.{AkkaHttpServer, ServerConfig}
-import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, Materializer, _}
-import play.api.{DefaultApplication, Mode, Configuration, _}
-import play.api.http._
-import play.api.i18n.{DefaultLangs, DefaultMessagesApi, _}
-import play.api.inject.{DefaultApplicationLifecycle, Injector, NewInstanceInjector, SimpleInjector}
-import play.api.mvc.{PlayBodyParsers, _}
-import play.api.mvc.request.RequestFactory
-import play.api.routing.Router
-import play.api.routing.sird._
-
-import scala.concurrent.ExecutionContext
-
 class Main {}
 
 object MainApp extends App {
@@ -25,9 +8,26 @@ object MainApp extends App {
 
 object Main {
   def main(args: Array[String]): Unit = {
-    if (!args.contains("headless")) {
-      javafx.application.Application.launch(classOf[MainGUI], args: _*)
-    } else {
+    //if (!args.contains("headless")) {
+    javafx.application.Application.launch(classOf[omnimtg.MainGUI], args: _*)
+    /*} else {
+
+    import controllers.ServerMainController
+    import java.io.{BufferedReader, File, InputStreamReader}
+    import play.core.server.{AkkaHttpServer, ServerConfig}
+    import akka.actor.ActorSystem
+    import akka.stream.{ActorMaterializer, Materializer, _}
+    import play.api.{DefaultApplication, Mode, Configuration, _}
+    import play.api.http._
+    import play.api.i18n.{DefaultLangs, DefaultMessagesApi, _}
+    import play.api.inject.{DefaultApplicationLifecycle, Injector, NewInstanceInjector, SimpleInjector}
+    import play.api.mvc.{PlayBodyParsers, _}
+    import play.api.mvc.request.RequestFactory
+    import play.api.routing.Router
+    import play.api.routing.sird._
+
+    import scala.concurrent.ExecutionContext
+
       val confFile = new File(args.headOption.getOrElse("conf/application.conf"))
       println(confFile.getAbsolutePath)
       val classLoader = Main.getClass.getClassLoader
@@ -86,6 +86,6 @@ object Main {
           x.printStackTrace()
       }
       Play.stop(application)
-    }
+    }*/
   }
 }

@@ -1,16 +1,27 @@
 package omnimtg
 
 import java.io._
+import java.awt.Desktop
+import java.net.URI
 import java.nio.file.{Path, Paths}
 import java.util.{Base64, Properties}
 
 import javax.xml.bind.DatatypeConverter
 import omnimtg.Interfaces._
 
-object DesktopFunctionProvider extends NativeFunctionProvider {
+class DesktopFunctionProvider() extends NativeFunctionProvider {
   private val configPath: Path = Paths.get("secret.properties")
 
-  override def openLink(url: String): Unit = Unit
+  override def openLink(url: String): Unit = {
+    val desktop = if (Desktop.isDesktopSupported) Desktop.getDesktop else null
+    if (desktop != null && desktop.isSupported(Desktop.Action.BROWSE)) {
+      try {
+        desktop.browse(new URI(url))
+      } catch {
+        case e: Throwable => e.printStackTrace
+      }
+    }
+  }
 
   override def save(prop: Properties, nativeBase: Object): Throwable = {
     var str: OutputStream = new ByteArrayOutputStream()
@@ -60,11 +71,12 @@ object DesktopFunctionProvider extends NativeFunctionProvider {
     null
   }
 
-  override def decodeBase64(str: String): Array[Byte] = Base64.getDecoder.decode(str)
+  override def decodeBase64(str: String): Array[Byte] = {
+    Base64.getDecoder.decode(str)
+  }
 
   override def saveToFile(path: String, contents: String, nativeBase: scala.Any): Throwable = {
     val writer = new PrintWriter(path)
-
     try {
       writer.write(contents)
     } catch {
@@ -75,5 +87,11 @@ object DesktopFunctionProvider extends NativeFunctionProvider {
     null
   }
 
-  override def encodeBase64ToString(digest: Array[Byte]): String = DatatypeConverter.printBase64Binary(digest)
+  override def encodeBase64ToString(digest: Array[Byte]): String = {
+    DatatypeConverter.printBase64Binary(digest)
+  }
+
+  override def println(x: Any): Unit = {
+    Predef.println(x)
+  }
 }

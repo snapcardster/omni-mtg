@@ -10,26 +10,32 @@ import java.util.{Date, Properties}
 import com.google.gson._
 import javax.xml.parsers.DocumentBuilderFactory
 import omnimtg.Interfaces._
-import org.apache.commons.lang3.StringUtils
+// import org.apache.commons.lang3.StringUtils
 import org.w3c.dom.{Document, Node, NodeList}
 
 import scala.collection.mutable.ListBuffer
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
-  val title = "Omni MTG Sync Tool, v4 / 2019-05-06"
+  def println(x: Any): Unit = {
+    nativeProvider.println(x)
+  }
+
+  val title: String = "Omni MTG Sync Tool, v5 / 2019-05-16 [H]"
 
   // when scryfall deployed: 3, before: 2
-  val version = "3"
+  val snapApiVersion = "3"
 
   // TODO: change back to test after test
-  val snapBaseUrl: String = "https://api.snapcardster.com"
+  var snapBaseUrl: String = "https://api.snapcardster.com"
   //val snapBaseUrl: String = "https://dev.snapcardster.com"
   //val snapBaseUrl: String =  "https://test.snapcardster.com"
   //val snapBaseUrl: String = "http://localhost:9000"
 
-  val snapCsvEndpoint: String = snapBaseUrl + s"/importer/sellerdata/from/csv/$version"
-  val snapLoginEndpoint: String = snapBaseUrl + "/auth"
-  val snapChangedEndpoint: String = snapBaseUrl + s"/marketplace/sellerdata/changed/$version"
+  def snapCsvEndpoint: String = snapBaseUrl + s"/importer/sellerdata/from/csv/$snapApiVersion"
+
+  def snapLoginEndpoint: String = snapBaseUrl + "/auth"
+
+  def snapChangedEndpoint: String = snapBaseUrl + s"/marketplace/sellerdata/changed/$snapApiVersion"
 
   val mkmBaseUrl: String = "https://api.cardmarket.com/ws/v2.0"
   val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
@@ -91,7 +97,32 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     thread = run(nativeBase)
   }
 
-  def startLoop(nativeBase: Object): Unit = {
+  // called by server, ENV-Var to .properties logic
+  def startServer(nativeBase: Object): Unit = {
+    val env = System.getenv()
+    var containedOne = false
+    Seq("mkmApp", "mkmAppSecret", "mkmAccessToken", "mkmAccessTokenSecret", "snapUser", "snapToken").foreach { k =>
+
+      if (env.containsKey(k)) {
+        val x = env.get(k)
+        if (x != null && x != "") {
+          containedOne = true
+          prop.setProperty(k, x)
+        }
+      }
+    }
+    if (containedOne) {
+      save(null)
+    }
+
+    if (env.containsKey("snapBaseUrl")) {
+      val x = env.get("snapBaseUrl")
+      if (x != null && x != "") {
+        snapBaseUrl = x
+        println("snapBaseUrl was set to " + snapBaseUrl)
+      }
+    }
+
     readProperties(nativeBase)
 
     thread = run(nativeBase)
@@ -356,7 +387,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
           content.add(line)
         }
       }
-      val csv = StringUtils.join(content, "\n")
+      val csv = content.toArray.mkString("\n") // StringUtils.join(content, "\n")
       csv
     } else {
       var text = "Server response: " + mkm.responseCode + " "

@@ -5,6 +5,7 @@ import play.api.libs.json._
 import play.api.mvc._
 import omnimtg._
 import omnimtg.Interfaces._
+import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -29,11 +30,21 @@ object JsSettings {
   implicit val w: Writes[JsSettings] = Json.writes[JsSettings]
 }
 
+class ServerFunctionProvider() extends omnimtg.DesktopFunctionProvider() {
+  val log = Logger("omni")
+
+  override def println(x: Any): Unit = {
+    log.debug(String.valueOf(x))
+  }
+}
+
 @Singleton
 class ServerMainController @Inject()(cc: ControllerComponents, implicit val executionContext: ExecutionContext) extends AbstractController(cc) {
 
-  val mc: MainController = new MainController(JavaFXPropertyFactory, DesktopFunctionProvider)
-  mc.startLoop(null)
+  val fun = new ServerFunctionProvider
+  val mc: MainController = new MainController(JavaFXPropertyFactory, fun)
+  fun.println(mc.title)
+  mc.startServer(null)
 
   def getStatus: Action[AnyContent] = Action.async {
     Future(Ok(Json.toJson(JsStatus(timeToNextSyncInSec = mc.getNextSync.getValue, running = mc.getRunning.getValue))))
