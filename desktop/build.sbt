@@ -27,9 +27,9 @@ lazy val root = (project in file(".")).
 
 // Need to add this directory as source root in intellij settings
 // TODO: remove C:/Arbeit/omni-mtg/common
-scalaSource in Compile := file("C:/Arbeit/omni-mtg/common/src/main/scala")
+// scalaSource in Compile := file("C:/Arbeit/omni-mtg/common/src/main/scala")
 
-unmanagedSourceDirectories in Compile += file("C:/Arbeit/omni-mtg/desktop/src/main/")
+// unmanagedSourceDirectories in Compile += file("C:/Arbeit/omni-mtg/desktop/src/main/")
 
 // Material UI Components in Java FX
 // https://github.com/jfoenixadmin/JFoenix
