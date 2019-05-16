@@ -6,7 +6,7 @@ import java.io.ByteArrayInputStream
 import java.util.Base64
 import omnimtg.Interfaces._
 import omnimtg._
-import com.jfoenix.controls._
+// import com.jfoenix.controls._
 import javafx.application._
 import javafx.beans.binding.Binding
 import javafx.beans.property.{Property, SimpleIntegerProperty, SimpleStringProperty}
@@ -22,7 +22,9 @@ import javafx.stage.Stage
 import scala.util.Try
 
 class MainGUI extends Application {
-  val controller: MainController = new MainController(JavaFXPropertyFactory, DesktopFunctionProvider)
+
+  val funcProvider = new DesktopFunctionProvider
+  val controller: MainController = new MainController(JavaFXPropertyFactory, funcProvider)
   val buttonCss = "--button-type: RAISED; -fx-background-color: blue; -fx-text-fill: white;"
   val button2Css = "--button-type: FLAT; -fx-background-color: green; -fx-text-fill: white;"
   var paneCss: String = "-fx-background-color:WHITE;-fx-padding:40;"
@@ -71,28 +73,28 @@ class MainGUI extends Application {
   }
 
   def getStage: GridPane = {
-    controller.start(DesktopFunctionProvider)
+    controller.start(funcProvider)
 
     val grid = new GridPane
     grid.setHgap(20.0)
     grid.add(new Label("🎚 Sync Options"), 0, 0)
     grid.add(
-      set(new JFXSlider(20, 43600, controller.getInterval.getValue.doubleValue))(linkTo(_, controller.getInterval.getNativeBase.asInstanceOf[SimpleIntegerProperty])),
+      set(new Slider(20, 43600, controller.getInterval.getValue.doubleValue))(linkTo(_, controller.getInterval.getNativeBase.asInstanceOf[SimpleIntegerProperty])),
       0, 1, 2, 1
     )
     grid.add(new Label("🕓 Sync interval in seconds"), 0, 2)
-    grid.add(set(new JFXTextField) { x =>
+    grid.add(set(new TextField) { x =>
       linkTo(x, controller.getInterval.getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
       x.setDisable(true)
     }, 1, 2)
     grid.add(new Label("📆 Resulting number of syncs per day"), 0, 3)
-    grid.add(set(new JFXTextField) { x =>
+    grid.add(set(new TextField) { x =>
       linkTo(x, new SimpleIntegerProperty(1440 * 60).divide(controller.getInterval.getNativeBase.asInstanceOf[SimpleIntegerProperty]).asString())
       x.setDisable(true)
     }, 1, 3)
     grid.add(new Label("📆 Next sync in"), 0, 4)
-    grid.add(set(new JFXTextField) { x =>
-      linkTo(x, controller.getNextSync().getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
+    grid.add(set(new TextField) { x =>
+      linkTo(x, controller.getNextSync.getNativeBase.asInstanceOf[SimpleIntegerProperty].asString)
       x.setDisable(true)
     }, 1, 4)
 
@@ -101,7 +103,7 @@ class MainGUI extends Application {
       controller.getSnapUser, controller.getSnapToken
     )
 
-    val startButton = set(new JFXButton("🔄 Start Sync")) { x =>
+    val startButton = set(new Button("🔄 Start Sync")) { x =>
       x.setStyle(buttonCss)
 
       x.disableProperty.bind(fields.map(_.getNativeBase.asInstanceOf[SimpleStringProperty].isEmpty).reduce(_ or _))
@@ -139,19 +141,19 @@ class MainGUI extends Application {
       new Label("🔒 MKM Api Key"),
       set(new Hyperlink("https://cardmarket.com/en/Magic/MainPage/showMyAccount"))(_.setOnMouseClicked(x => handleClick(x))),
       pasteButton("mkm"),
-      set(new JFXTextField) { x =>
+      set(new TextField) { x =>
         x.setPromptText("Enter MKM App Token")
         linkTo(x, controller.getMkmAppToken.getNativeBase.asInstanceOf[SimpleStringProperty])
       },
-      set(new JFXTextField) { x =>
+      set(new TextField) { x =>
         linkTo(x, controller.getMkmAppSecret.getNativeBase.asInstanceOf[SimpleStringProperty])
         x.setPromptText("Enter MKM App Secret")
       },
-      set(new JFXTextField) { x =>
+      set(new TextField) { x =>
         x.setPromptText("Enter MKM Access Token")
         linkTo(x, controller.getMkmAccessToken.getNativeBase.asInstanceOf[SimpleStringProperty])
       },
-      set(new JFXTextField) { x =>
+      set(new TextField) { x =>
         x.setPromptText("Enter MKM Access Token Secret")
         linkTo(x, controller.getMkmAccessTokenSecret.getNativeBase.asInstanceOf[SimpleStringProperty])
       },
@@ -162,15 +164,15 @@ class MainGUI extends Application {
       new Label("🔒 Snapcardster Credentials"),
       //set(new Hyperlink("https://snapcardster.com/app"))(_.setOnMouseClicked(x => handleClick(x))),
       //pasteButton("snap"),
-      set(new JFXTextField) { x =>
+      set(new TextField) { x =>
         linkTo(x, controller.getSnapUser.getNativeBase.asInstanceOf[SimpleStringProperty])
         x.setPromptText("Enter Snapcardster User Id")
       },
-      set(new JFXTextField) { x =>
+      set(new TextField) { x =>
         linkTo(x, controller.getSnapPassword.getNativeBase.asInstanceOf[SimpleStringProperty])
         x.setPromptText("Enter Snapcardster Password")
       },
-      set(new JFXTextField) { x =>
+      set(new TextField) { x =>
         linkTo(x, controller.getSnapToken.getNativeBase.asInstanceOf[SimpleStringProperty])
         x.setPromptText("Snapcardster Token")
       },
@@ -199,7 +201,7 @@ class MainGUI extends Application {
   }
 
   def pasteButton(mode: String): Button = {
-    set(new JFXButton("📋 Paste from Clipboard")) { x =>
+    set(new Button("📋 Paste from Clipboard")) { x =>
       x.setStyle(button2Css)
       x.setOnMouseClicked { _ =>
         val data = Try(String.valueOf(Toolkit.getDefaultToolkit.getSystemClipboard.getData(DataFlavor.stringFlavor))).toOption.getOrElse("")
@@ -211,14 +213,14 @@ class MainGUI extends Application {
   }
 
   def loginAndGetTokenBtn(): Button = {
-    set(new JFXButton("💾 Login and get Token")) { x =>
+    set(new Button("💾 Login and get Token")) { x =>
       x.setStyle(buttonCss)
       bindLogin(x)
     }
   }
 
   def saveBtn(): Button = {
-    set(new JFXButton("💾 Save")) { x =>
+    set(new Button("💾 Save")) { x =>
       x.setStyle(buttonCss)
       bindSave(x)
     }

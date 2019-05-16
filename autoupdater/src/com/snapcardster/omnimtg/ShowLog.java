@@ -6,13 +6,14 @@ import java.awt.*;
 
 import static javax.swing.text.DefaultCaret.ALWAYS_UPDATE;
 
-public class ShowLog {
+public class ShowLog extends ShowLogBase {
     private JTextArea label;
     private JFrame win;
 
+    @Override
     public void log(String s) {
-
         if (label == null) {
+
             label = new JTextArea();
             // label.setEditable(false);
             label.setLineWrap(true);
@@ -33,7 +34,11 @@ public class ShowLog {
             win.setContentPane(label);
             win.setLocationRelativeTo(null);
             win.setSize(400, 300);
-            win.setVisible(true);
+            try {
+                win.setVisible(true);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         String t = label.getText() + "\n" + s;
         label.setText(t);
@@ -42,16 +47,19 @@ public class ShowLog {
         System.out.println(s);
     }
 
+    @Override
     public String getText() {
         return label == null ? "" : label.getText();
     }
 
+    @Override
     public void setText(String s) {
         if (label != null) {
             label.setText(s);
         }
     }
 
+    @Override
     public void dispose() {
         if (win != null) {
             win.dispose();

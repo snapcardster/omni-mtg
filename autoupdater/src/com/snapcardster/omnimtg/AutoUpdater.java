@@ -32,10 +32,10 @@ public class AutoUpdater {
     static final String URL = "https://api.github.com/repos/snapcardster/omni-mtg/releases";
     //  Label label = null;
 
-    ShowLog showLog;
+    ShowLogBase showLog;
     ReportException reporter;
 
-    public AutoUpdater(ShowLog showLog, ReportException reporter) {
+    public AutoUpdater(ShowLogBase showLog, ReportException reporter) {
         this.showLog = showLog;
         this.reporter = reporter;
     }
@@ -367,10 +367,17 @@ public class AutoUpdater {
 
         //checkAndRun();
 
-
         primaryStage.setScene(new Scene(root, 675, 800));
         primaryStage.show();*/
-        new AutoUpdater(new ShowLog(), new ReportException()).checkAndRun();
+
+        ShowLogBase showLog;
+        if (args != null && args.length > 0 && args[0].equalsIgnoreCase("headless")) {
+            showLog = new ShowLogDummy();
+        } else {
+            showLog = new ShowLog();
+        }
+
+        new AutoUpdater(showLog, new ReportException()).checkAndRun();
         // launch(args);
     }
 

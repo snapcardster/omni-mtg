@@ -21,7 +21,7 @@ public class AutoUpdaterTest {
 
     @Before
     public void setUp() {
-        obj = new AutoUpdater(new DummyShowLog(), new DummyReportException());
+        obj = new AutoUpdater(new ShowLogDummy(), new DummyReportException());
     }
 
     @Test
@@ -86,7 +86,7 @@ public class AutoUpdaterTest {
 
         obj.startJar(tempFile);
 
-        Assert.assertThat(out.toString(), new CustomTypeSafeMatcher<>("contains") {
+        Assert.assertThat(out.toString(), new CustomTypeSafeMatcher<String>("contains") {
             @Override
             protected boolean matchesSafely(String s) {
                 return s.contains("Hello World");
