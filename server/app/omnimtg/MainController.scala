@@ -224,7 +224,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       val saveBackupPath = Paths.get("backup", s"backup_${System.currentTimeMillis}.csv").toFile
       saveBackupPath.mkdirs
       val saveBackupPathAbsolute = saveBackupPath.getAbsolutePath
-      val e = nativeProvider.saveToFile(saveBackupPath, csv, nativeBase)
+      val e = nativeProvider.saveToFile(saveBackupPathAbsolute, csv, nativeBase)
       if (e != null) {
         println(e)
       }
