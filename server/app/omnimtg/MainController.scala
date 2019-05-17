@@ -128,9 +128,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     if (keys.forall(k => Option(prop.getProperty(k)).getOrElse("").nonEmpty)) {
       running.setValue(true)
-      output.setValue(title + "\nAll values were set in prop, autostarted. The properties file seems to be ok.")
+      val str = title + "\nAll values were set in prop, autostarted. The properties file seems to be ok."
+      println(str)
+      output.setValue(str)
     } else {
-      output.setValue(title + "\nNot all values were set in prop, no autostart. You can check the properties file.")
+      val str = title + "\nNot all values were set in prop, no autostart. You can check the properties file."
+      println(str)
+      output.setValue(str)
     }
 
     thread = run(nativeBase)
@@ -217,8 +221,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       // Create a local backup of the MKM Stock
       output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
       val csv = loadMkmStock()
-
-      nativeProvider.saveToFile(s"backup_${System.currentTimeMillis}.csv", csv, nativeBase)
+      val saveBackupPath = Paths.get("backup", s"backup_${System.currentTimeMillis}.csv").toFile
+      saveBackupPath.mkdirs
+      val saveBackupPathAbsolute = saveBackupPath.getAbsolutePath
+      val e = nativeProvider.saveToFile(saveBackupPath, csv, nativeBase)
+      if (e != null) {
+        println(e)
+      }
 
       backupFirst = false
     }

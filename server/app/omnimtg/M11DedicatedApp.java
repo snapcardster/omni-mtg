@@ -32,7 +32,8 @@ public class M11DedicatedApp {
     /**
      * Constructor. Fill parameters according to given MKM profile app parameters.
      */
-    public M11DedicatedApp(String appToken, String appSecret, String accessToken, String accessSecret, NativeFunctionProvider nativeFunctionProvider) {
+    public M11DedicatedApp(String appToken, String appSecret, String accessToken, String accessSecret,
+                           NativeFunctionProvider nativeFunctionProvider) {
         _mkmAppToken = appToken;
         _mkmAppSecret = appSecret;
         _mkmAccessToken = accessToken;
@@ -61,9 +62,10 @@ public class M11DedicatedApp {
 
     private void _debug(String msg) {
         if (_debug) {
-            System.out.print(GregorianCalendar.getInstance().getTime());
-            System.out.print(" > ");
-            System.out.println(msg);
+            Object time = GregorianCalendar.getInstance().getTime();
+            String res = time + " > " + msg;
+            System.out.print(res);
+            this.nativeFunctionProvider.println(res);
         }
     }
 
