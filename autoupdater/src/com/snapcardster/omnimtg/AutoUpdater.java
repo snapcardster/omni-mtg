@@ -100,7 +100,7 @@ public class AutoUpdater {
         primaryStage.show();
     }*/
 
-    void checkAndRun() {
+    void checkAndRun(boolean headless) {
         try {
             //String s = null;
             //s.toString();
@@ -120,7 +120,7 @@ public class AutoUpdater {
                     try {
                         Thread.sleep(10 * 1000);
                         //label.setText("");
-                        checkAndRun();
+                        checkAndRun(headless);
                     } catch (InterruptedException e) {
                         log(e);
                     }
@@ -137,13 +137,13 @@ public class AutoUpdater {
                 String downloadUrl = items.get(max);
                 if (targetFile.exists() && unzip.exists()) {
                     log("Up to date and unzipped! Starting...");
-                    startJarInDir(unzip);
+                    startJarInDir(unzip, headless);
                     //} else {
                     //  log("Downloaded found, unzipping...");
 //                        unzipAndStart(unzip, targetFile);
                     //                  }
                 } else {
-                    downloadAndStart(targetFile, unzip, downloadUrl);
+                    downloadAndStart(targetFile, unzip, downloadUrl, headless);
                 }
             }
         } catch (Exception e) {
@@ -163,7 +163,7 @@ public class AutoUpdater {
         }
     }
 
-    void downloadAndStart(File targetFile, File unzip, String downloadUrl) {
+    void downloadAndStart(File targetFile, File unzip, String downloadUrl, boolean headless) {
     /*Button downloadIt = new Button("Download it");
     downloadIt.setOnMouseClicked(x -> {*/
         try {
@@ -174,7 +174,7 @@ public class AutoUpdater {
                     long len = downloadBinaryFile(downloadUrl, targetFile);
                     log("Done: approx " + mb(len) + " MB loaded, unzipping...");
 
-                    unzipAndStart(unzip, targetFile);
+                    unzipAndStart(unzip, targetFile, headless);
 
                 } catch (Exception e) {
                     log(e);
@@ -194,14 +194,14 @@ public class AutoUpdater {
         return Math.round(bytes / 1000.0 / 1000.0 * 1000) / 1000.0;
     }
 
-    private void unzipAndStart(File unzip, File downloadedZip) throws Exception {
+    private void unzipAndStart(File unzip, File downloadedZip, boolean headless) throws Exception {
         if (!unzip.exists() || unzip.delete()) {
             if (unzip.mkdirs()) {
                 unzipFile(downloadedZip, unzip);
                 log("Done. Copying old preferences...");
                 copyPreferences(unzip);
                 log("Done. Starting...");
-                startJarInDir(unzip);
+                startJarInDir(unzip, headless);
             } else {
                 throw new Exception("Could not create folders");
             }
@@ -238,16 +238,16 @@ public class AutoUpdater {
         }
     }
 
-    void startJarInDir(File unzipDir) {
+    void startJarInDir(File unzipDir, boolean headless) {
         String o = Paths.get(unzipDir.getAbsolutePath(), "omni-mtg").toFile().getAbsolutePath();
         System.setProperty("user.dir", o);
         File file = Paths.get(o, "omni-mtg-java-archive", "omni-mtg.jar").toFile();
-        if (file.exists()) {
-            startJar(file);
-        } else {
+        if (headless) {
             boolean win = System.getProperty("os.name").toLowerCase().contains("windows");
             File fileServerStarter = Paths.get(o, "bin", "omnimtg" + (win ? ".bat" : "")).toFile();
             execBin(fileServerStarter);
+        } else {
+            startJar(file);
         }
     }
 
@@ -257,7 +257,7 @@ public class AutoUpdater {
             //System.setProperty("user.dir", absolutePath.getParentFile().getAbsolutePath());
             //rt.exec("./" + absolutePath.getName());
             String absolutePath1 = absolutePath.getAbsolutePath();
-            log("Starting Server " + absolutePath1 + "...");
+            log("Starting Server " + absolutePath1 + " using java runtime exec.\nTry opening for example:\nhttp://localhost:9000/status");
             Process process = rt.exec(absolutePath1);
             BufferedReader rd = new BufferedReader(new InputStreamReader(process.getErrorStream()));
             String line;
@@ -402,13 +402,14 @@ public class AutoUpdater {
         primaryStage.show();*/
 
         ShowLogBase showLog;
-        if (args != null && args.length > 0 && args[0].equalsIgnoreCase("headless")) {
+        boolean headless = args != null && args.length > 0 && args[0].equalsIgnoreCase("headless");
+        if (headless) {
             showLog = new ShowLogDummy();
         } else {
             showLog = new ShowLog();
         }
 
-        new AutoUpdater(showLog, new ReportException()).checkAndRun();
+        new AutoUpdater(showLog, new ReportException()).checkAndRun(headless);
         // launch(args);
     }
 

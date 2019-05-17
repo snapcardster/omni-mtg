@@ -20,7 +20,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     nativeProvider.println(x)
   }
 
-  val title: String = "Omni MTG Sync Tool, v5 / 2019-05-16 [H]"
+  val title: String = "Omni MTG Sync Tool, v5 / 2019-05-17 [H]"
 
   // when scryfall deployed: 3, before: 2
   val snapApiVersion = "3"
@@ -100,8 +100,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   // called by server, ENV-Var to .properties logic
   def startServer(nativeBase: Object): Unit = {
     val env = System.getenv()
+    val keys = Seq("mkmApp", "mkmAppSecret", "mkmAccessToken", "mkmAccessTokenSecret", "snapUser", "snapToken")
     var containedOne = false
-    Seq("mkmApp", "mkmAppSecret", "mkmAccessToken", "mkmAccessTokenSecret", "snapUser", "snapToken").foreach { k =>
+    keys.foreach { k =>
 
       if (env.containsKey(k)) {
         val x = env.get(k)
@@ -124,6 +125,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
 
     readProperties(nativeBase)
+
+    if (keys.forall(k => Option(prop.getProperty(k)).getOrElse("").nonEmpty)) {
+      running.setValue(true)
+      output.setValue(title + "\nAll values were set in prop, autostarted. The properties file seems to be ok.")
+    } else {
+      output.setValue(title + "\nNot all values were set in prop, no autostart. You can check the properties file.")
+    }
 
     thread = run(nativeBase)
   }
@@ -179,8 +187,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
                 handleEx(e)
                 inSync.setValue(false)
             }
-            if (request.getValue != null) {
-              request.getValue().asInstanceOf[Runnable].run()
+            request.getValue match {
+              case r: Runnable => r.run
+              case x => println("request was " + x + ", expected Runnable")
             }
 
             val seconds = interval.getValue.intValue
