@@ -222,7 +222,11 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
       val csv = loadMkmStock()
       val saveBackupPath = Paths.get("backup", s"backup_${System.currentTimeMillis}.csv").toFile
-      saveBackupPath.mkdirs
+      try {
+        saveBackupPath.getParentFile.mkdirs
+      } catch {
+        case e: Exception => println(e)
+      }
       val saveBackupPathAbsolute = saveBackupPath.getAbsolutePath
       val e = nativeProvider.saveToFile(saveBackupPathAbsolute, csv, nativeBase)
       if (e != null) {

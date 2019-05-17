@@ -34,7 +34,8 @@ class ServerFunctionProvider() extends omnimtg.DesktopFunctionProvider() {
   val log = Logger("omni")
 
   override def println(x: Any): Unit = {
-    log.debug(String.valueOf(x))
+    log.info(String.valueOf(x))
+    Predef.println(x)
   }
 }
 
