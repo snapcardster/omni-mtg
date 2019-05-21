@@ -352,6 +352,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   def handleEx(e: Throwable, obj: Any = null): Unit = {
     if (e != null) {
+      println(x)
       e.printStackTrace()
       output.setValue(errorText(e) + "\n" + obj)
     } else {

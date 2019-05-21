@@ -43,8 +43,9 @@ class ServerFunctionProvider() extends omnimtg.DesktopFunctionProvider() {
 class ServerMainController @Inject()(cc: ControllerComponents, implicit val executionContext: ExecutionContext) extends AbstractController(cc) {
 
   val fun = new ServerFunctionProvider
+  fun.println("Starting Omni Mtg Controller...")
   val mc: MainController = new MainController(JavaFXPropertyFactory, fun)
-  fun.println(mc.title)
+  fun.println("Version: " + mc.title + "\n")
   mc.startServer(null)
 
   def getStatus: Action[AnyContent] = Action.async {

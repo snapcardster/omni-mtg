@@ -21,7 +21,7 @@ public class AutoUpdaterTest {
 
     @Before
     public void setUp() {
-        obj = new AutoUpdater(new ShowLogDummy(), new DummyReportException());
+        obj = new AutoUpdater(new ShowLogDummy(), new DummyReportException(), true);
     }
 
     @Test

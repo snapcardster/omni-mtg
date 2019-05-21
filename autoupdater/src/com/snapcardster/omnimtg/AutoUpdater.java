@@ -34,10 +34,12 @@ public class AutoUpdater {
 
     ShowLogBase showLog;
     ReportException reporter;
+    boolean headless;
 
-    public AutoUpdater(ShowLogBase showLog, ReportException reporter) {
+    public AutoUpdater(ShowLogBase showLog, ReportException reporter, boolean headless) {
         this.showLog = showLog;
         this.reporter = reporter;
+        this.headless = headless;
     }
 
     void log(Exception e) {
@@ -71,7 +73,8 @@ public class AutoUpdater {
     }
 
     private void logProgress(long totalBytesRead) {
-        showLog.setText(savedText + "\n" + mb(totalBytesRead) + "MB");
+        String pref = headless ? "" : savedText + "\n";
+        showLog.setText(pref + mb(totalBytesRead) + "MB");
     }
 
     /*@Override
@@ -100,7 +103,7 @@ public class AutoUpdater {
         primaryStage.show();
     }*/
 
-    void checkAndRun(boolean headless) {
+    void checkAndRun() {
         try {
             //String s = null;
             //s.toString();
@@ -120,7 +123,7 @@ public class AutoUpdater {
                     try {
                         Thread.sleep(10 * 1000);
                         //label.setText("");
-                        checkAndRun(headless);
+                        checkAndRun();
                     } catch (InterruptedException e) {
                         log(e);
                     }
@@ -129,7 +132,8 @@ public class AutoUpdater {
                 Date max = items.keySet().stream().max(Comparator.naturalOrder()).orElse(new Date());
                 log("Newest release from " + max);
 
-                String currentDir = new File("").getAbsolutePath();
+                File root = new File("");
+                String currentDir = root.getAbsolutePath();
                 File targetFile = Paths.get(currentDir, "downloaded" + max.getTime() + ".zip").toFile();
 
                 File unzip = Paths.get(currentDir, "unzip" + max.getTime()).toFile();
@@ -137,13 +141,13 @@ public class AutoUpdater {
                 String downloadUrl = items.get(max);
                 if (targetFile.exists() && unzip.exists()) {
                     log("Up to date and unzipped! Starting...");
-                    startJarInDir(unzip, headless);
+                    startJarInDir(root, unzip);
                     //} else {
                     //  log("Downloaded found, unzipping...");
 //                        unzipAndStart(unzip, targetFile);
                     //                  }
                 } else {
-                    downloadAndStart(targetFile, unzip, downloadUrl, headless);
+                    downloadAndStart(root, targetFile, unzip, downloadUrl);
                 }
             }
         } catch (Exception e) {
@@ -163,7 +167,7 @@ public class AutoUpdater {
         }
     }
 
-    void downloadAndStart(File targetFile, File unzip, String downloadUrl, boolean headless) {
+    void downloadAndStart(File root, File targetFile, File unzip, String downloadUrl) {
     /*Button downloadIt = new Button("Download it");
     downloadIt.setOnMouseClicked(x -> {*/
         try {
@@ -174,7 +178,7 @@ public class AutoUpdater {
                     long len = downloadBinaryFile(downloadUrl, targetFile);
                     log("Done: approx " + mb(len) + " MB loaded, unzipping...");
 
-                    unzipAndStart(unzip, targetFile, headless);
+                    unzipAndStart(root, unzip, targetFile);
 
                 } catch (Exception e) {
                     log(e);
@@ -194,14 +198,14 @@ public class AutoUpdater {
         return Math.round(bytes / 1000.0 / 1000.0 * 1000) / 1000.0;
     }
 
-    private void unzipAndStart(File unzip, File downloadedZip, boolean headless) throws Exception {
+    private void unzipAndStart(File root, File unzip, File downloadedZip) throws Exception {
         if (!unzip.exists() || unzip.delete()) {
             if (unzip.mkdirs()) {
                 unzipFile(downloadedZip, unzip);
                 log("Done. Copying old preferences...");
                 copyPreferences(unzip);
                 log("Done. Starting...");
-                startJarInDir(unzip, headless);
+                startJarInDir(root, unzip);
             } else {
                 throw new Exception("Could not create folders");
             }
@@ -238,37 +242,45 @@ public class AutoUpdater {
         }
     }
 
-    void startJarInDir(File unzipDir, boolean headless) {
+    void startJarInDir(File root, File unzipDir) {
         String o = Paths.get(unzipDir.getAbsolutePath(), "omni-mtg").toFile().getAbsolutePath();
-        System.setProperty("user.dir", o);
         File file = Paths.get(o, "omni-mtg-java-archive", "omni-mtg.jar").toFile();
+        // System.setProperty("user.dir", o);
         if (headless) {
             boolean win = System.getProperty("os.name").toLowerCase().contains("windows");
             File fileServerStarter = Paths.get(o, "bin", "omnimtg" + (win ? ".bat" : "")).toFile();
-            execBin(fileServerStarter);
+            execBin(root, fileServerStarter);
         } else {
             startJar(file);
         }
     }
 
-    void execBin(File absolutePath) {
+    void execBin(File rootPath, File absolutePath) {
         try {
+            File r2 = new File(rootPath.getAbsolutePath());
+            try {
+                for (String l : r2.list()) {
+                    if (l.equalsIgnoreCase("RUNNING_PID")) {
+                        try {
+                            Files.delete(Paths.get(l));
+                            log("Deleted RUNNING_PID file <" + l + ">");
+                        } catch (Exception e) {
+                            log("Could not delete RUNNING_PID file <" + l + ">: " + e);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log("Could not list program root <" + r2 + ">: " + e);
+            }
+
             Runtime rt = Runtime.getRuntime();
             //System.setProperty("user.dir", absolutePath.getParentFile().getAbsolutePath());
             //rt.exec("./" + absolutePath.getName());
             String absolutePath1 = absolutePath.getAbsolutePath();
-            log("Starting Server " + absolutePath1 + " using java runtime exec.\nTry opening for example:\nhttp://localhost:9000/status");
+            log("Starting Server <" + absolutePath1 + "> using java runtime exec.\nTry opening for example:\nhttp://localhost:9000/status");
             Process process = rt.exec(absolutePath1);
-            BufferedReader rd = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            String line;
-            while ((line = rd.readLine()) != null) {
-                log(line);
-            }
-            BufferedReader rd2 = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line2;
-            while ((line2 = rd2.readLine()) != null) {
-                log(line2);
-            }
+            printThread(process.getErrorStream(), "ERROR: ");
+            printThread(process.getInputStream(), "");
             int retVal = process.waitFor();
             log("Program exited with " + retVal);
         } catch (Exception e) {
@@ -276,10 +288,21 @@ public class AutoUpdater {
         }
     }
 
-    void startJar(File file) {
-        //log("TODO");
-        //if ("".isEmpty()) return;
+    void printThread(InputStream errorStream, String pref) {
+        new Thread(() -> {
+            try {
+                BufferedReader rd = new BufferedReader(new InputStreamReader(errorStream));
+                String line;
+                while ((line = rd.readLine()) != null) {
+                    log(pref + line);
+                }
+            } catch (Exception e) {
+                log(e);
+            }
+        }).start();
+    }
 
+    void startJar(File file) {
         // String p = Paths.get(o, "start omni-mtg.bat").toFile().getAbsolutePath();
         try {
             // new ProcessBuilder("cd " + o).start().waitFor();
@@ -298,16 +321,16 @@ public class AutoUpdater {
             Attributes attributes = manifest.getMainAttributes();
             String className = attributes.getValue(Attributes.Name.MAIN_CLASS);
 
-            URL[] urls = new URL[]{file.toURI().toURL()};
+            URL[] urls = {file.toURI().toURL()};
             URLClassLoader loader = new URLClassLoader(urls);
             Class<?> cls = loader.loadClass(className); // replace the complete class name with the actual main class
             System.out.println(className);
             Method main = cls.getDeclaredMethod("main", String[].class); // get the main method using reflection
             System.out.println(main);
-            String[] args = new String[0];
+            String[] args = {};
             showLog.dispose();
-
-            main.invoke(null, new Object[]{args}); // static methods are invoked with null as first argument
+            Object[] params = {args};
+            main.invoke(null, params); // static methods are invoked with null as first argument
             /*
             final String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
             final File currentJar = file;
@@ -338,7 +361,7 @@ public class AutoUpdater {
         long totalBytesRead = 0L;
         try (BufferedInputStream in = new BufferedInputStream(new URL(downloadUrl).openStream());
              FileOutputStream fileOutputStream = new FileOutputStream(targetFile)) {
-            byte dataBuffer[] = new byte[64 * 1024];
+            byte dataBuffer[] = new byte[4 * 64 * 1024];
             int bytesRead;
             log("Downloading...");
             logProgressPrepare();
@@ -409,7 +432,7 @@ public class AutoUpdater {
             showLog = new ShowLog();
         }
 
-        new AutoUpdater(showLog, new ReportException()).checkAndRun(headless);
+        new AutoUpdater(showLog, new ReportException(), headless).checkAndRun();
         // launch(args);
     }
 
@@ -440,7 +463,7 @@ public class AutoUpdater {
 
     void unzipFile(File zipFile, File extractFolder) {
         try {
-            int BUFFER = 2048;
+            int BUFFER = 4 * 2048;
             File file = new File(zipFile.getAbsolutePath());
 
             ZipFile zip = new ZipFile(file);
@@ -448,9 +471,11 @@ public class AutoUpdater {
 
             if (!new File(newPath).mkdir()) {
                 System.out.println("mkdir for " + newPath + " failed");
+            } else {
+                System.out.print(".");
             }
             Enumeration<ZipEntry> zipFileEntries = (Enumeration<ZipEntry>) zip.entries();
-
+            HashSet<String> failedDirs = new HashSet<>();
             // Process each entry
             while (zipFileEntries.hasMoreElements()) {
                 // grab a zip file entry
@@ -462,9 +487,15 @@ public class AutoUpdater {
                 File destinationParent = destFile.getParentFile();
 
                 // create the parent directory structure if needed
+
                 if (!destinationParent.mkdirs()) {
-                    System.out.println("mkdirs for " + destinationParent + " failed");
+                    if (!failedDirs.contains(destinationParent.getAbsolutePath())) {
+                        System.out.println("mkdirs for " + destinationParent + " failed");
+                    } else {
+                        System.out.print(".");
+                    }
                 }
+                failedDirs.add(destinationParent.getAbsolutePath());
 
                 if (!entry.isDirectory()) {
                     BufferedInputStream is = new BufferedInputStream(zip
