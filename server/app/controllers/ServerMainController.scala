@@ -90,7 +90,7 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   }
 
   def postExitRequest(): Action[AnyContent] = Action.async {
-    if (!mc.getRunning.getValue && !mc.getInSync.getValue) {
+    if (!mc.getInSync.getValue) {
       System.exit(42)
     }
 

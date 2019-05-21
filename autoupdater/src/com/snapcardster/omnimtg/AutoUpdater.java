@@ -258,20 +258,10 @@ public class AutoUpdater {
     void execBin(File rootPath, File absolutePath) {
         try {
             File r2 = new File(rootPath.getAbsolutePath());
-            try {
-                for (String l : r2.list()) {
-                    if (l.equalsIgnoreCase("RUNNING_PID")) {
-                        try {
-                            Files.delete(Paths.get(l));
-                            log("Deleted RUNNING_PID file <" + l + ">");
-                        } catch (Exception e) {
-                            log("Could not delete RUNNING_PID file <" + l + ">: " + e);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                log("Could not list program root <" + r2 + ">: " + e);
-            }
+            log("Searching for RUNNING_PID in program root <" + r2 + ">...");
+
+            searchAndDeleteRunningPID(r2);
+
 
             Runtime rt = Runtime.getRuntime();
             //System.setProperty("user.dir", absolutePath.getParentFile().getAbsolutePath());
@@ -285,6 +275,28 @@ public class AutoUpdater {
             log("Program exited with " + retVal);
         } catch (Exception e) {
             log(e);
+        }
+    }
+
+    void searchAndDeleteRunningPID(File r2) {
+        log("Searching for RUNNING_PID in program root <" + r2 + ">...");
+        try {
+            for (String path : r2.list()) {
+                File current = new File(path);
+                if (current.isDirectory()) {
+                    searchAndDeleteRunningPID(current);
+                } else if (current.getName().equalsIgnoreCase("RUNNING_PID")) {
+                    try {
+                        Files.delete(Paths.get(path));
+                        log("Deleted RUNNING_PID file <" + path + ">");
+                    } catch (Exception e) {
+                        log("Could not delete RUNNING_PID file <" + path + ">: " + e);
+
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log("Could not list program root <" + r2 + ">: " + e);
         }
     }
 

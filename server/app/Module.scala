@@ -1,5 +1,6 @@
 import java.time.Clock
 
+import controllers.ServerFunctionProvider
 import com.google.inject.AbstractModule
 
 class Module extends AbstractModule {

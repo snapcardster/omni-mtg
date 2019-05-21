@@ -221,7 +221,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       // Create a local backup of the MKM Stock
       output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
       val csv = loadMkmStock()
-      val saveBackupPath = Paths.get("backup", s"backup_${System.currentTimeMillis}.csv").toFile
+      val bFile = s"backup_${System.currentTimeMillis}.csv"
+      val saveBackupPath = new File(File.separatorChar + "backup" + File.separatorChar + bFile) //Paths.get("backup", bFile).toFile
       try {
         saveBackupPath.getParentFile.mkdirs
       } catch {
@@ -352,7 +353,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   def handleEx(e: Throwable, obj: Any = null): Unit = {
     if (e != null) {
-      println(x)
+      println(e)
       e.printStackTrace()
       output.setValue(errorText(e) + "\n" + obj)
     } else {
