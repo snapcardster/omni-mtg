@@ -31,6 +31,8 @@ public class AutoUpdater {
     //        extends Application
     static final String URL = "https://api.github.com/repos/snapcardster/omni-mtg/releases";
     //  Label label = null;
+    final String title = "Omni MTG Updater v1";
+    int wait = 20;
 
     ShowLogBase showLog;
     ReportException reporter;
@@ -59,6 +61,7 @@ public class AutoUpdater {
 
     private void log(String s) {
         showLog.log(s);
+
         /* if (label != null) {
             Platform.runLater(() ->
                     label.setText(label.getText() + "\n" + s)
@@ -109,7 +112,7 @@ public class AutoUpdater {
             //s.toString();
             Map<Date, String> items = new HashMap<>();
             try {
-                log("Omni MTG Updater\nChecking updates... (this may take some seconds)");
+                log(title + " " + (ShowLogDummy.windows ? "win" : "unix") + "\nChecking updates... (this may take some seconds)");
                 String json = readFromGitApi();
                 parseJson(items, json);
                 log("Code Repository found, there are " + items.size() + " releases.");
@@ -118,10 +121,10 @@ public class AutoUpdater {
             }
 
             if (items.isEmpty()) {
-                log("No releases found, offline? Retrying in 10 sec.");
+                log("No releases found, offline? Retrying in " + wait + " sec.");
                 new Thread(() -> {
                     try {
-                        Thread.sleep(10 * 1000);
+                        Thread.sleep(wait * 1000);
                         //label.setText("");
                         checkAndRun();
                     } catch (InterruptedException e) {
@@ -247,7 +250,7 @@ public class AutoUpdater {
         File file = Paths.get(o, "omni-mtg-java-archive", "omni-mtg.jar").toFile();
         // System.setProperty("user.dir", o);
         if (headless) {
-            boolean win = System.getProperty("os.name").toLowerCase().contains("windows");
+            boolean win = ShowLogDummy.windows;
             File fileServerStarter = Paths.get(o, "bin", "omnimtg" + (win ? ".bat" : "")).toFile();
             execBin(root, fileServerStarter);
         } else {
@@ -258,10 +261,7 @@ public class AutoUpdater {
     void execBin(File rootPath, File absolutePath) {
         try {
             File r2 = new File(rootPath.getAbsolutePath());
-            log("Searching for RUNNING_PID in program root <" + r2 + ">...");
-
-            searchAndDeleteRunningPID(r2);
-
+            searchAndDeleteRunningPID(r2, 0);
 
             Runtime rt = Runtime.getRuntime();
             //System.setProperty("user.dir", absolutePath.getParentFile().getAbsolutePath());
@@ -273,30 +273,36 @@ public class AutoUpdater {
             printThread(process.getInputStream(), "");
             int retVal = process.waitFor();
             log("Program exited with " + retVal);
+            System.exit(retVal);
         } catch (Exception e) {
             log(e);
         }
     }
 
-    void searchAndDeleteRunningPID(File r2) {
-        log("Searching for RUNNING_PID in program root <" + r2 + ">...");
-        try {
-            for (String path : r2.list()) {
-                File current = new File(path);
-                if (current.isDirectory()) {
-                    searchAndDeleteRunningPID(current);
-                } else if (current.getName().equalsIgnoreCase("RUNNING_PID")) {
+    void searchAndDeleteRunningPID(File r2, int d) {
+        String pid = "RUNNING_PID";
+        // log("Searching for " + pid + " in dir <" + r2 + "> d" + d + "...");
+
+        String[] list = r2.list();
+        if (list != null) {
+            for (String path : list) {
+                File current = Paths.get(r2.getAbsolutePath(), path).toFile();
+                char[] arr = new char[d];
+                Arrays.fill(arr, ' ');
+                boolean isDir = current.isDirectory();
+                log(new String(arr) + (isDir ? "+" : "-") + " " + current.getName());
+                if (isDir) {
+                    searchAndDeleteRunningPID(current, d + 1);
+                } else if (current.getName().equalsIgnoreCase(pid)) {
                     try {
                         Files.delete(Paths.get(path));
-                        log("Deleted RUNNING_PID file <" + path + ">");
+                        log("Deleted " + pid + " file <" + path + ">");
                     } catch (Exception e) {
-                        log("Could not delete RUNNING_PID file <" + path + ">: " + e);
+                        log("Could not delete " + pid + " file <" + path + ">: " + e);
 
                     }
                 }
             }
-        } catch (Exception e) {
-            log("Could not list program root <" + r2 + ">: " + e);
         }
     }
 

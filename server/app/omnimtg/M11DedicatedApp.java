@@ -136,8 +136,8 @@ public class M11DedicatedApp {
 
             HttpURLConnection connection = (HttpURLConnection) new URL(requestURL).openConnection();
             connection.addRequestProperty("Authorization", authorizationProperty);
-            _debug("Authorization: " + authorizationProperty);
-            _debug("Body: " + body);
+            //_debug("Authorization: " + authorizationProperty);
+            //_debug("Body: " + body);
             connection.setRequestMethod(method);
             if (body != null) {
                 connection.setRequestProperty("Content-Type", contentType);
@@ -162,7 +162,8 @@ public class M11DedicatedApp {
 
             _lastCode = connection.getResponseCode();
 
-            _debug("Response Code is " + _lastCode + " " + connection.getResponseMessage());
+            //_debug("Response Code is " + _lastCode + " " + connection.getResponseMessage());
+            _debug("Response Code is " + _lastCode);
 
             if (200 == _lastCode || 401 == _lastCode || 404 == _lastCode) {
                 BufferedReader rd = new BufferedReader(new InputStreamReader(_lastCode == 200 ? connection.getInputStream() : connection.getErrorStream()));
@@ -173,13 +174,13 @@ public class M11DedicatedApp {
                 }
                 rd.close();
                 _lastContent = sb.toString();
-                _debug("Response Content is \n" + _lastContent);
+                // _debug("Response Content is \n" + _lastContent);
             }
 
             return (_lastCode == 200);
 
         } catch (Exception e) {
-            _debug("(!) Error while requesting " + requestURL);
+            _debug("(!) Error while requesting " + requestURL + ": " + e.toString());
             _lastError = e;
         }
         return false;

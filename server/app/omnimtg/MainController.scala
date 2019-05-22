@@ -56,6 +56,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   private val snapPassword: StringProperty = propFactory.newStringProperty("snapPassword", "", prop)
   private val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
   private val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
+  private val addedProp: StringProperty = propFactory.newStringProperty(null)
+  private val changedProp: StringProperty = propFactory.newStringProperty(null)
+  private val deletedProp: StringProperty = propFactory.newStringProperty(null)
   private val interval: IntegerProperty = propFactory.newIntegerProperty("interval", 180, prop)
   private val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
   private val request: ObjectProperty = propFactory.newObjectProperty(null)
@@ -298,10 +301,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       }
     }
 
+    deletedProp.setValue(null)
+    val readableRemove = readableChanges(removedOrReservedItems)
     info.append(
       "Will remove " + removedOrReservedItems.length + " items...\n"
-        + readableChanges(removedOrReservedItems) + "\n"
+        + readableRemove + "\n"
     )
+    deletedProp.setValue(readableRemove)
     output.setValue(info.toString)
 
     val resDel = deleteFromMkmStock(removedOrReservedItems)
@@ -313,6 +319,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     info.append("  " + res + "\n")
     output.setValue(info.toString)
 
+    changedProp.setValue(null)
     val addedItems = list.flatMap { parts =>
       if (parts.`type` == "added" || parts.`type` == "changed") {
         List(parts)
@@ -320,10 +327,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         Nil
       }
     }
+    val addedReadable = readableChanges(addedItems)
     info.append(
       "Will add " + addedItems.length + " items...\n"
-        + readableChanges(addedItems) + "\n"
+        + addedReadable + "\n"
     )
+    changedProp.setValue(addedReadable)
+
     output.setValue(info.toString)
 
     val resAdd = addToMkmStock(addedItems)
@@ -660,11 +670,17 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   override def getOutput: StringProperty = output
 
+  def getAdded: StringProperty = addedProp
+
+  def getChanged: StringProperty = changedProp
+
+  def getDeleted: StringProperty = deletedProp
+
   override def getInterval: IntegerProperty = interval
 
-  override def getNextSync(): IntegerProperty = nextSync
+  override def getNextSync: IntegerProperty = nextSync
 
-  override def getInSync(): BooleanProperty = inSync
+  override def getInSync: BooleanProperty = inSync
 
-  override def getRequest(): ObjectProperty = request
+  override def getRequest: ObjectProperty = request
 }

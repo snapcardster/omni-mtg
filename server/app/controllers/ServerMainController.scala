@@ -9,14 +9,14 @@ import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class JsStatus(timeToNextSyncInSec: Int, running: Boolean)
+case class JsStatus(timeToNextSyncInSec: Int, running: Boolean, inSync: Boolean)
 
 object JsStatus {
   implicit val r: Reads[JsStatus] = Json.reads[JsStatus]
   implicit val w: Writes[JsStatus] = Json.writes[JsStatus]
 }
 
-case class JsLog(timestamp: Long, text: String, deleted: List[String] = Nil, changed: List[String] = Nil, added: List[String] = Nil)
+case class JsLog(timestamp: Long, text: String, deleted: List[String], changed: List[String], added: List[String])
 
 object JsLog {
   implicit val r: Reads[JsLog] = Json.reads[JsLog]
@@ -31,10 +31,10 @@ object JsSettings {
 }
 
 class ServerFunctionProvider() extends omnimtg.DesktopFunctionProvider() {
-  val log = Logger("omni")
+  // val log = Logger("omnimtg")
 
   override def println(x: Any): Unit = {
-    log.info(String.valueOf(x))
+    Logger.info(String.valueOf(x))
     Predef.println(x)
   }
 }
@@ -49,7 +49,11 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   mc.startServer(null)
 
   def getStatus: Action[AnyContent] = Action.async {
-    Future(Ok(Json.toJson(JsStatus(timeToNextSyncInSec = mc.getNextSync.getValue, running = mc.getRunning.getValue))))
+    Future(Ok(Json.toJson(JsStatus(
+      timeToNextSyncInSec = mc.getNextSync.getValue,
+      running = mc.getRunning.getValue,
+      inSync = mc.getInSync.getValue
+    ))))
   }
 
   def getSettings: Action[AnyContent] = Action.async {
@@ -57,7 +61,13 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   }
 
   def getLogs: Action[AnyContent] = Action.async {
-    Future(Ok(Json.toJson(Seq(JsLog(System.currentTimeMillis, mc.getOutput.getValue)))))
+    Future(Ok(Json.toJson(Seq(JsLog(
+      timestamp = System.currentTimeMillis,
+      text = mc.getOutput.getValue,
+      added = Option(mc.getAdded.getValue).toList,
+      changed = Option(mc.getChanged.getValue).toList,
+      deleted = Option(mc.getDeleted.getValue).toList
+    )))))
   }
 
   def parseJs[T](req: Request[AnyContent], rds: Reads[T])(f: T => Future[Result]): Future[Result] = {
@@ -90,17 +100,25 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   }
 
   def postExitRequest(): Action[AnyContent] = Action.async {
+    val retCode = 42
+    var when = "exit is scheduled"
+    var whenTime = mc.getNextSync.getValue
     if (!mc.getInSync.getValue) {
-      System.exit(42)
+      when = "exiting now"
+      whenTime = 0
+      new Thread(() => {
+        Thread.sleep(1000)
+        System.exit(retCode)
+      }).start
     }
 
-    mc.getRequest.setValue(() => System.exit(42))
+    mc.getRequest.setValue(() => System.exit(retCode))
     mc.getRunning.setValue(false)
 
     Future(Ok(Json.toJson(Seq(
-      "Ok, exit is scheduled",
+      "Ok, ",
       "Running: " + mc.getRunning.getValue,
-      "Time to exit is: " + mc.getNextSync.getValue
+      "Time to exit is: " + whenTime
     ))))
   }
 }
