@@ -16,13 +16,6 @@ object JsStatus {
   implicit val w: Writes[JsStatus] = Json.writes[JsStatus]
 }
 
-case class JsLog(timestamp: Long, text: String, deleted: List[String], changed: List[String], added: List[String])
-
-object JsLog {
-  implicit val r: Reads[JsLog] = Json.reads[JsLog]
-  implicit val w: Writes[JsLog] = Json.writes[JsLog]
-}
-
 case class JsSettings(enabled: Boolean, intervalInSec: Int)
 
 object JsSettings {
@@ -61,13 +54,12 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   }
 
   def getLogs: Action[AnyContent] = Action.async {
-    Future(Ok(Json.toJson(Seq(JsLog(
-      timestamp = System.currentTimeMillis,
-      text = mc.getOutput.getValue,
-      added = Option(mc.getAdded.getValue).toList,
-      changed = Option(mc.getChanged.getValue).toList,
-      deleted = Option(mc.getDeleted.getValue).toList
-    )))))
+    //object LogItem {
+    //  implicit val r: Reads[LogItem] = Json.reads[LogItem]
+    implicit val w: Writes[LogItem] = Json.writes[LogItem]
+    //}
+
+    Future(Ok(Json.toJson(mc.getLog.getValue.asInstanceOf[List[LogItem]])))
   }
 
   def parseJs[T](req: Request[AnyContent], rds: Reads[T])(f: T => Future[Result]): Future[Result] = {

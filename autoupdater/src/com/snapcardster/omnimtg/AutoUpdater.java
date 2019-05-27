@@ -261,7 +261,9 @@ public class AutoUpdater {
     void execBin(File rootPath, File absolutePath) {
         try {
             File r2 = new File(rootPath.getAbsolutePath());
-            searchAndDeleteRunningPID(r2, 0);
+            if (ShowLogDummy.windows) {
+                searchAndDeleteRunningPID(r2, 0);
+            }
 
             Runtime rt = Runtime.getRuntime();
             //System.setProperty("user.dir", absolutePath.getParentFile().getAbsolutePath());

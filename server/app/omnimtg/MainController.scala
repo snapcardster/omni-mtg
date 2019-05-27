@@ -15,6 +15,8 @@ import org.w3c.dom.{Document, Node, NodeList}
 
 import scala.collection.mutable.ListBuffer
 
+case class LogItem(timestamp: Long, text: String, deleted: List[String], changed: List[String], added: List[String])
+
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
   def println(x: Any): Unit = {
     nativeProvider.println(x)
@@ -56,13 +58,14 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   private val snapPassword: StringProperty = propFactory.newStringProperty("snapPassword", "", prop)
   private val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
   private val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
-  private val addedProp: StringProperty = propFactory.newStringProperty(null)
-  private val changedProp: StringProperty = propFactory.newStringProperty(null)
-  private val deletedProp: StringProperty = propFactory.newStringProperty(null)
   private val interval: IntegerProperty = propFactory.newIntegerProperty("interval", 180, prop)
   private val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
   private val request: ObjectProperty = propFactory.newObjectProperty(null)
-  private var backupFirst = true
+  private val logs: ObjectProperty = propFactory.newObjectProperty(Nil)
+  //private var backupFirst = true
+  private var addedList: List[String] = Nil
+  private var changedList: List[String] = Nil
+  private var deletedList: List[String] = Nil
 
   def insertFromClip(mode: String, data: String): Unit = {
     mode match {
@@ -196,7 +199,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
             }
             request.getValue match {
               case r: Runnable => r.run
-              case x => println("request was " + x + ", expected Runnable")
+              case x => ()
+              //println("request was " + x + ", expected Runnable")
             }
 
             val seconds = interval.getValue.intValue
@@ -220,31 +224,31 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def sync(nativeBase: Object): Unit = {
-    if (backupFirst) {
-      // Create a local backup of the MKM Stock
-      output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
-      val csv = loadMkmStock()
-      val bFile = s"backup_${System.currentTimeMillis}.csv"
-      val saveBackupPath = new File(File.separatorChar + "backup" + File.separatorChar + bFile) //Paths.get("backup", bFile).toFile
-      try {
-        saveBackupPath.getParentFile.mkdirs
-      } catch {
-        case e: Exception => println(e)
-      }
-      val saveBackupPathAbsolute = saveBackupPath.getAbsolutePath
-      val e = nativeProvider.saveToFile(saveBackupPathAbsolute, csv, nativeBase)
-      if (e != null) {
-        println(e)
-      }
-
-      backupFirst = false
+    //if (backupFirst) {
+    // Create a local backup of the MKM Stock
+    output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
+    var csv = loadMkmStock()
+    val bFile = s"backup_${System.currentTimeMillis}.csv"
+    val saveBackupPath = new File(File.separatorChar + "backup" + File.separatorChar + bFile) //Paths.get("backup", bFile).toFile
+    try {
+      saveBackupPath.getParentFile.mkdirs
+    } catch {
+      case e: Exception => println(e)
     }
+    val saveBackupPathAbsolute = saveBackupPath.getAbsolutePath
+    val e = nativeProvider.saveToFile(saveBackupPathAbsolute, csv, nativeBase)
+    if (e != null) {
+      println(e)
+    }
+
+    //backupFirst = false
+    //}
 
     val sb = new StringBuilder
     val res1 = loadSnapChangedAndDeleteFromStock(sb)
 
     sb.append("Loading MKM stock...\n")
-    val csv = loadMkmStock()
+    csv = loadMkmStock()
     sb.append("  " + csv.count(x => x == '\n') + " lines read from mkm stock\n")
     output.setValue(sb.toString)
 
@@ -262,6 +266,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     sb.append("• MKM to Snapcardster, changes at Snapcardster:\n" + info)
     output.setValue(sb.toString)
+
+    addLogEntry
+  }
+
+  private def addLogEntry: Unit = {
+    val item = LogItem(System.currentTimeMillis, output.getValue, deletedList, changedList, addedList)
+    logs.setValue(item :: logs.getValue.asInstanceOf[List[LogItem]])
   }
 
   private def readableChanges(items: Seq[SellerDataChanged]): String = {
@@ -301,13 +312,16 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       }
     }
 
-    deletedProp.setValue(null)
     val readableRemove = readableChanges(removedOrReservedItems)
     info.append(
       "Will remove " + removedOrReservedItems.length + " items...\n"
         + readableRemove + "\n"
     )
-    deletedProp.setValue(readableRemove)
+
+    deletedList = makeLogList(removedOrReservedItems)
+    addedList = makeLogList(list.filter(_.`type` == "added"))
+    changedList = makeLogList(list.filter(_.`type` == "changed"))
+
     output.setValue(info.toString)
 
     val resDel = deleteFromMkmStock(removedOrReservedItems)
@@ -319,7 +333,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     info.append("  " + res + "\n")
     output.setValue(info.toString)
 
-    changedProp.setValue(null)
     val addedItems = list.flatMap { parts =>
       if (parts.`type` == "added" || parts.`type` == "changed") {
         List(parts)
@@ -327,12 +340,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         Nil
       }
     }
+
     val addedReadable = readableChanges(addedItems)
     info.append(
       "Will add " + addedItems.length + " items...\n"
         + addedReadable + "\n"
     )
-    changedProp.setValue(addedReadable)
 
     output.setValue(info.toString)
 
@@ -350,6 +363,21 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     output.setValue(info.toString)
 
     info
+  }
+
+  def makeLogList(seq: Seq[SellerDataChanged]): List[String] = {
+    seq.map { x =>
+      val csv = x.info
+      x.`type` + " " + csv.name +
+        " (" + csv.editionCode + ") " + csv.language.shortString + " " +
+        csv.condition.shortString + (if (csv.foil) " Foil" else "") +
+        (if (csv.altered) " Altered" else "") +
+        (if (csv.signed) " Signed" else "") +
+        " " + csv.price + "€"
+    }
+      .sortBy(x => x)
+      .groupBy(x => x).toList.map(x => "  " + x._2.length + " " + x._1)
+      .toList
   }
 
   def getChangeItems(json: String): Array[SellerDataChanged] = {
@@ -670,12 +698,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   override def getOutput: StringProperty = output
 
-  def getAdded: StringProperty = addedProp
-
-  def getChanged: StringProperty = changedProp
-
-  def getDeleted: StringProperty = deletedProp
-
   override def getInterval: IntegerProperty = interval
 
   override def getNextSync: IntegerProperty = nextSync
@@ -683,4 +705,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   override def getInSync: BooleanProperty = inSync
 
   override def getRequest: ObjectProperty = request
+
+  def getLog: ObjectProperty = logs
 }
