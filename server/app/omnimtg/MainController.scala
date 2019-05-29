@@ -1,15 +1,15 @@
 package omnimtg
 
+import omnimtg.Interfaces._
 import java.io._
 import java.nio.file._
 import java.util
 import java.util.regex._
 import java.util.zip._
 import java.util.{Date, Properties}
-
 import com.google.gson._
+
 import javax.xml.parsers.DocumentBuilderFactory
-import omnimtg.Interfaces._
 // import org.apache.commons.lang3.StringUtils
 import org.w3c.dom.{Document, Node, NodeList}
 
@@ -22,16 +22,21 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     nativeProvider.println(x)
   }
 
-  val title: String = "Omni MTG Sync Tool, v5 / 2019-05-17 [H]"
+  val title: String = "Omni MTG Sync Tool 2019-05-29 [H]"
 
   // when scryfall deployed: 3, before: 2
-  val snapApiVersion = "3"
+  val snapApiVersion: String = "3"
 
   // TODO: change back to test after test
   var snapBaseUrl: String = "https://api.snapcardster.com"
   //val snapBaseUrl: String = "https://dev.snapcardster.com"
   //val snapBaseUrl: String =  "https://test.snapcardster.com"
   //val snapBaseUrl: String = "http://localhost:9000"
+
+  val CHANGED: String = "changed"
+  val ADDED: String = "added"
+  val REMOVED: String = "removed"
+  val RESERVED: String = "reserved"
 
   def snapCsvEndpoint: String = snapBaseUrl + s"/importer/sellerdata/from/csv/$snapApiVersion"
 
@@ -43,7 +48,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
   val mkmStockFileEndpoint: String = mkmBaseUrl + "/output.json/stock/file"
 
-  private var thread: Thread = _
+  private var thread: Thread = null
   private val prop: Properties = new Properties
   private val backupPath: Path = null
   //Paths.get("mkm_backup_" + System.currentTimeMillis() + ".csv")
@@ -199,26 +204,29 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
             }
             request.getValue match {
               case r: Runnable => r.run
-              case x => ()
-              //println("request was " + x + ", expected Runnable")
+              case null => () // ok, runnable or nothing
+              case x => println("request was " + x + ", expected Runnable")
             }
 
             val seconds = interval.getValue.intValue
             for (x <- 1.to(seconds)) {
-              if (seconds == interval.getValue.intValue) { // abort wait if changed during wait
-                nextSync.setValue(seconds - x)
-                Thread.sleep(1000)
-              } else {
-                Thread.sleep(10)
-              }
+              // don't abort wait if changed during wait
+              //if (seconds == interval.getValue.intValue) {
+              nextSync.setValue(seconds - x)
+              Thread.sleep(1000)
+              //} else {
+              //Thread.sleep(1000)
+              //}
             }
           } else {
+            // not running, just wait
             Thread.sleep(1000)
           }
         }
-
       }
-    })
+    }
+
+    )
     t.start()
     t
   }
@@ -270,12 +278,14 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     addLogEntry
   }
 
-  private def addLogEntry: Unit = {
-    val item = LogItem(System.currentTimeMillis, output.getValue, deletedList, changedList, addedList)
-    logs.setValue(item :: logs.getValue.asInstanceOf[List[LogItem]])
+  def addLogEntry: Unit = {
+    if (deletedList.nonEmpty || changedList.nonEmpty || addedList.nonEmpty) {
+      val item = LogItem(System.currentTimeMillis, output.getValue, deletedList, changedList, addedList)
+      logs.setValue(item :: logs.getValue.asInstanceOf[List[LogItem]])
+    }
   }
 
-  private def readableChanges(items: Seq[SellerDataChanged]): String = {
+  def readableChanges(items: Seq[SellerDataChanged]): String = {
     items.map(readableChangeEntry)
       .sortBy(x => x)
       .groupBy(x => x).toList.map(x => "  " + x._2.length + " " + x._1)
@@ -305,7 +315,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val list = getChangeItems(json)
 
     val removedOrReservedItems = list.flatMap { parts =>
-      if (parts.`type` == "removed" || parts.`type` == "reserved") {
+      if (parts.`type` == REMOVED || parts.`type` == RESERVED) {
         List(parts)
       } else {
         Nil
@@ -319,8 +329,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     )
 
     deletedList = makeLogList(removedOrReservedItems)
-    addedList = makeLogList(list.filter(_.`type` == "added"))
-    changedList = makeLogList(list.filter(_.`type` == "changed"))
+    addedList = makeLogList(list.filter(_.`type` == ADDED))
+    changedList = makeLogList(list.filter(_.`type` == CHANGED))
 
     output.setValue(info.toString)
 
@@ -334,7 +344,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     output.setValue(info.toString)
 
     val addedItems = list.flatMap { parts =>
-      if (parts.`type` == "added" || parts.`type` == "changed") {
+      if (parts.`type` == ADDED || parts.`type` == CHANGED) {
         List(parts)
       } else {
         Nil
@@ -674,37 +684,69 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     new Gson().toJson((xmlItems ++ needToRemove).toArray)
   }
 
-  override def getThread: Thread = thread
+  override def getThread: Thread
 
-  override def getProperties: Properties = prop
+  = thread
 
-  override def getAborted: BooleanProperty = aborted
+  override def getProperties: Properties
 
-  override def getRunning: BooleanProperty = running
+  = prop
 
-  override def getMkmAppToken: StringProperty = mkmAppToken
+  override def getAborted: BooleanProperty
 
-  override def getMkmAppSecret: StringProperty = mkmAppSecret
+  = aborted
 
-  override def getMkmAccessToken: StringProperty = mkmAccessToken
+  override def getRunning: BooleanProperty
 
-  override def getMkmAccessTokenSecret: StringProperty = mkmAccessTokenSecret
+  = running
 
-  override def getSnapUser: StringProperty = snapUser
+  override def getMkmAppToken: StringProperty
 
-  override def getSnapPassword: StringProperty = snapPassword
+  = mkmAppToken
 
-  override def getSnapToken: StringProperty = snapToken
+  override def getMkmAppSecret: StringProperty
 
-  override def getOutput: StringProperty = output
+  = mkmAppSecret
 
-  override def getInterval: IntegerProperty = interval
+  override def getMkmAccessToken: StringProperty
 
-  override def getNextSync: IntegerProperty = nextSync
+  = mkmAccessToken
 
-  override def getInSync: BooleanProperty = inSync
+  override def getMkmAccessTokenSecret: StringProperty
 
-  override def getRequest: ObjectProperty = request
+  = mkmAccessTokenSecret
+
+  override def getSnapUser: StringProperty
+
+  = snapUser
+
+  override def getSnapPassword: StringProperty
+
+  = snapPassword
+
+  override def getSnapToken: StringProperty
+
+  = snapToken
+
+  override def getOutput: StringProperty
+
+  = output
+
+  override def getInterval: IntegerProperty
+
+  = interval
+
+  override def getNextSync: IntegerProperty
+
+  = nextSync
+
+  override def getInSync: BooleanProperty
+
+  = inSync
+
+  override def getRequest: ObjectProperty
+
+  = request
 
   def getLog: ObjectProperty = logs
 }
