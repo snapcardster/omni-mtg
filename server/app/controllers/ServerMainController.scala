@@ -59,7 +59,7 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
     implicit val w: Writes[LogItem] = Json.writes[LogItem]
     //}
 
-    Future(Ok(Json.toJson(mc.getLog.getValue.asInstanceOf[List[LogItem]])))
+    Future(Ok(Json.toJson(mc.getLogs.asInstanceOf[List[LogItem]])))
   }
 
   def parseJs[T](req: Request[AnyContent], rds: Reads[T])(f: T => Future[Result]): Future[Result] = {

@@ -278,6 +278,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     addLogEntry
   }
 
+  def getLogs: List[LogItem] = {
+    LogItem(System.currentTimeMillis, "Latest response: \n" + output.getValue, Nil, Nil, Nil) :: logs.getValue.asInstanceOf[List[LogItem]]
+  }
+
   def addLogEntry: Unit = {
     if (deletedList.nonEmpty || changedList.nonEmpty || addedList.nonEmpty) {
       val item = LogItem(System.currentTimeMillis, output.getValue, deletedList, changedList, addedList)
@@ -462,8 +466,11 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       val csv = content.toArray.mkString("\n") // StringUtils.join(content, "\n")
       csv
     } else {
-      var text = "Server response: " + mkm.responseCode + " "
-      if (mkm.lastError != null) text += mkm.lastError.toString
+      var text = "Error:" + mkmStockFileEndpoint + " had server response: " + mkm.responseCode + " "
+      if (mkm.lastError != null) {
+        text += mkm.lastError.toString
+      }
+      output.setValue(text)
       sys.error(text)
     }
   }
