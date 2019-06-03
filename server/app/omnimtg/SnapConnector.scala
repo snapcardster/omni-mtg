@@ -26,11 +26,12 @@ class SnapConnector {
       val os = connection.getOutputStream
       os.write(outputInBytes)
     }
+    connection.setConnectTimeout(60 * 60 * 1000)
     connection.connect
 
-    System.out.println(requestURL + " response code:" + connection.getResponseCode)
-
     val lastCode = connection.getResponseCode
+    System.out.println(requestURL + " response code:" + lastCode)
+
 
     val str =
       if (lastCode == 200)
