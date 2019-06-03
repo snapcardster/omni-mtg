@@ -6,7 +6,7 @@ del /Q /F /S "%d%target\universal\omni-mtg.zip"
 mkdir "%d%target\temp"
 del /Q /F /S "%d%target\temp"
 
-REM "%JAVA_HOME%\bin\java.exe" -jar "C:/Users/Karsten/.IntelliJIdea2018.3/config/plugins/Scala/launcher/sbt-launch.jar" dist
+"%JAVA_HOME%\bin\java.exe" -jar "C:/Users/Karsten/.IntelliJIdea2018.3/config/plugins/Scala/launcher/sbt-launch.jar" dist
 
 Powershell.exe -executionpolicy remotesigned -File extract.ps1
 

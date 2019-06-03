@@ -1,15 +1,19 @@
 package omnimtg
 
+import omnimtg.Interfaces._
 import java.io._
 import java.net.{HttpURLConnection, URL}
 
-class SnapConnector {
+class SnapConnector(func: NativeFunctionProvider) {
   def call(requestURL: String, method: String, auth: String = null, body: String = null): String = {
-    System.out.println(auth + ", " + method + ": " + requestURL + " -> " + body)
+    func.println(
+      auth + ", " + method + ": " + requestURL + ", " +
+        (if (body == null) "no body" else "body is a string of length " + body.length)
+    )
     val connection: HttpURLConnection = new URL(requestURL).openConnection.asInstanceOf[HttpURLConnection]
     if (auth != null) {
       connection.addRequestProperty("Authorization", auth)
-      System.out.println("Auth:" + auth)
+      func.println("Auth:" + auth)
     }
     if (body != null) {
       connection.setRequestProperty("Content-Type", "application/json")
@@ -17,20 +21,22 @@ class SnapConnector {
     }
 
     connection.setRequestMethod(method)
-    System.out.println(connection.getRequestMethod)
+
     connection.setUseCaches(false)
     connection.setDoInput(true)
     if (body != null) {
       connection.setDoOutput(true)
       val outputInBytes = body.getBytes("UTF-8")
+      func.println(connection.getRequestMethod + "ing " + outputInBytes.length + " bytes...")
       val os = connection.getOutputStream
       os.write(outputInBytes)
     }
     connection.setConnectTimeout(60 * 60 * 1000)
+    func.println("connect...")
     connection.connect
 
     val lastCode = connection.getResponseCode
-    System.out.println(requestURL + " response code:" + lastCode)
+    func.println(requestURL + " response code:" + lastCode)
 
 
     val str =

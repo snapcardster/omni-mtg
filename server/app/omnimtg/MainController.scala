@@ -159,11 +159,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
   }
 
+  def snapConnector = new SnapConnector(nativeProvider)
+
   def loginSnap(): Unit = {
     output.setValue(outputPrefix() + "Logging in to Snapcardster...")
     val body = s"""{\"userId\":\"${snapUser.getValue}\",\"password\":\"${snapPassword.getValue}\"}"""
     output.setValue(outputPrefix() + body)
-    val res = new SnapConnector().call(snapLoginEndpoint, "POST", body = body)
+    val res = snapConnector.call(snapLoginEndpoint, "POST", body = body)
     if (res == null) {
       snapToken.setValue("")
     } else {
@@ -263,7 +265,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val res = postToSnap(csv)
 
     // output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
-    println("res:" + res)
+    println("res has a length of " + res.length)
     val items = getChangeItems(res)
 
     val info =
@@ -343,7 +345,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     output.setValue(info.toString)
 
     var body = if (resDel.isEmpty) "[]" else resDel
-    var res = new SnapConnector().call(snapChangedEndpoint, "POST", getAuth, body)
+    var res = snapConnector.call(snapChangedEndpoint, "POST", getAuth, body)
     info.append("  " + res + "\n")
     output.setValue(info.toString)
 
@@ -371,7 +373,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     output.setValue(info.toString)
 
     body = if (resAdd.isEmpty) "[]" else resAdd
-    res = new SnapConnector().call(snapChangedEndpoint, "POST", getAuth, body)
+    res = snapConnector.call(snapChangedEndpoint, "POST", getAuth, body)
 
     info.append("  " + res + "\n")
     output.setValue(info.toString)
@@ -424,12 +426,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   def postToSnap(csv: String): String = {
     val body = new Gson().toJson(MKMCsv("mkmStock.csv", csv))
-    val res = new SnapConnector().call(snapCsvEndpoint, "POST", getAuth, body)
+    val res = snapConnector.call(snapCsvEndpoint, "POST", getAuth, body)
     res
   }
 
   def loadChangedFromSnap(): String = {
-    val res = new SnapConnector().call(snapChangedEndpoint, "GET", getAuth, null)
+    val res = snapConnector.call(snapChangedEndpoint, "GET", getAuth, null)
     res
   }
 
@@ -444,7 +446,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
       val builder = new GsonBuilder
       val obj = new Gson().fromJson(mkm.responseContent, classOf[MKMSomething])
-      System.out.println(obj.toString)
+      //      System.out.println(obj.toString)
       val result = obj.stock
 
       // get string content from base64'd gzip

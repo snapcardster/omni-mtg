@@ -11,7 +11,7 @@ POST http://localhost:9000/settings
 Content-Type: application/json
 
 {
-  "enabled": false, "intervalInSec": 180
+  "enabled": false, "intervalInSec": 20
 }
 
 ###
