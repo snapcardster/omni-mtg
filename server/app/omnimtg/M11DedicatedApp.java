@@ -1,7 +1,7 @@
 package omnimtg;
 
 import omnimtg.Interfaces.NativeFunctionProvider;
-
+import omnimtg.Config;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.BufferedReader;
@@ -61,7 +61,7 @@ public class M11DedicatedApp {
     }
 
     private void _debug(String msg) {
-        if (_debug) {
+        if (_debug || Config.isVerbose()) {
             Object time = GregorianCalendar.getInstance().getTime();
             String res = time + " > " + msg;
             System.out.print(res);
@@ -174,7 +174,10 @@ public class M11DedicatedApp {
                 }
                 rd.close();
                 _lastContent = sb.toString();
-                // _debug("Response Content is \n" + _lastContent);
+                if (Config.isVerbose()) {
+                    _debug("Response Content is \n" + _lastContent);
+                }
+                //
             }
 
             return (_lastCode == 200);

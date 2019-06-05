@@ -13,6 +13,14 @@ Content-Type: application/json
 {
   "enabled": false, "intervalInSec": 20
 }
+###
+
+POST http://localhost:9000/settings
+Content-Type: application/json
+
+{
+  "enabled": true, "intervalInSec": 20
+}
 
 ###
 

@@ -28,6 +28,9 @@ class SnapConnector(func: NativeFunctionProvider) {
       connection.setDoOutput(true)
       val outputInBytes = body.getBytes("UTF-8")
       func.println(connection.getRequestMethod + "ing " + outputInBytes.length + " bytes...")
+      if (Config.isVerbose) {
+        func.println(connection.getRequestMethod + "ing <" + body + ">")
+      }
       val os = connection.getOutputStream
       os.write(outputInBytes)
     }

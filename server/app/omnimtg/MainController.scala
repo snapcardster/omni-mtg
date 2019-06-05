@@ -148,6 +148,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       output.setValue(str)
     }
 
+    if (env.containsKey("verbose")) {
+      val x = env.get("verbose")
+      if (x != null && x != "") {
+        Config.setVerbose(java.lang.Boolean.parseBoolean(x))
+        println("Config.verbose was set to " + Config.isVerbose)
+      }
+    }
     thread = run(nativeBase)
   }
 
@@ -484,6 +491,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def deleteFromMkmStock(entries: Seq[SellerDataChanged]): String = {
+    entries.grouped(100).map(seq =>
+      deleteFromMkmStockWindowed(seq)
+    ).mkString("\n")
+  }
+
+  def deleteFromMkmStockWindowed(entries: Seq[SellerDataChanged]): String = {
     if (entries.isEmpty)
       return ""
 
@@ -615,7 +628,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def getConfirmation(xml: String, tagName: String, entriesInRequest: Seq[SellerDataChanged], added: Boolean): String = {
-    val ex = nativeProvider.saveToFile("xml-" + tagName + "-" + System.currentTimeMillis + ".xml", xml, null)
+    val ex = nativeProvider.saveToFile(
+      File.separatorChar + "logs" + File.separatorChar + "xml-" + tagName + "-" + System.currentTimeMillis + ".xml", xml, null
+    )
     if (ex == null) {
       println("Failed writing info xml: " + ex)
     }
