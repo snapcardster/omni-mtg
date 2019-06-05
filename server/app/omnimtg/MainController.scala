@@ -491,14 +491,19 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def deleteFromMkmStock(entries: Seq[SellerDataChanged]): String = {
-    entries.grouped(100).map(seq =>
-      deleteFromMkmStockWindowed(seq)
-    ).mkString("\n")
+    val buf = ListBuffer[ImportConfirmation]()
+    for (seq <- entries.grouped(100)) {
+      deleteFromMkmStockWindowedRaw(seq) match {
+        case Left(x) => return x
+        case Right(res) => buf ++= res
+      }
+    }
+    new Gson().toJson(buf.toList.toArray)
   }
 
-  def deleteFromMkmStockWindowed(entries: Seq[SellerDataChanged]): String = {
+  def deleteFromMkmStockWindowedRaw(entries: Seq[SellerDataChanged]): Either[String, Array[ImportConfirmation]] = {
     if (entries.isEmpty)
-      return ""
+      return Right(Array())
 
     val mkm = getMkm
 
@@ -520,9 +525,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val hasOutput = false
     if (!mkm.request(mkmStockEndpoint, "DELETE", body, "application/xml", hasOutput)) {
       handleEx(mkm.lastError, entries)
-      getErrorString(mkm)
+      Left(getErrorString(mkm))
     } else {
-      getConfirmation(mkm.responseContent, "deleted", entries, added = false)
+      Right(getConfirmationRaw(mkm.responseContent, "deleted", entries, added = false))
     }
   }
 
@@ -628,6 +633,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def getConfirmation(xml: String, tagName: String, entriesInRequest: Seq[SellerDataChanged], added: Boolean): String = {
+    new Gson().toJson(getConfirmationRaw(xml, tagName, entriesInRequest, added))
+  }
+
+  def getConfirmationRaw(xml: String, tagName: String, entriesInRequest: Seq[SellerDataChanged], added: Boolean): Array[ImportConfirmation] = {
     val ex = nativeProvider.saveToFile(
       File.separatorChar + "logs" + File.separatorChar + "xml-" + tagName + "-" + System.currentTimeMillis + ".xml", xml, null
     )
@@ -705,72 +714,40 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       } else {
         Array()
       }
-    new Gson().toJson((xmlItems ++ needToRemove).toArray)
+    (xmlItems ++ needToRemove).toArray
   }
 
-  override def getThread: Thread
+  override def getThread: Thread = thread
 
-  = thread
+  override def getProperties: Properties = prop
 
-  override def getProperties: Properties
+  override def getAborted: BooleanProperty = aborted
 
-  = prop
+  override def getRunning: BooleanProperty = running
 
-  override def getAborted: BooleanProperty
+  override def getMkmAppToken: StringProperty = mkmAppToken
 
-  = aborted
+  override def getMkmAppSecret: StringProperty = mkmAppSecret
 
-  override def getRunning: BooleanProperty
+  override def getMkmAccessToken: StringProperty = mkmAccessToken
 
-  = running
+  override def getMkmAccessTokenSecret: StringProperty = mkmAccessTokenSecret
 
-  override def getMkmAppToken: StringProperty
+  override def getSnapUser: StringProperty = snapUser
 
-  = mkmAppToken
+  override def getSnapPassword: StringProperty = snapPassword
 
-  override def getMkmAppSecret: StringProperty
+  override def getSnapToken: StringProperty = snapToken
 
-  = mkmAppSecret
+  override def getOutput: StringProperty = output
 
-  override def getMkmAccessToken: StringProperty
+  override def getInterval: IntegerProperty = interval
 
-  = mkmAccessToken
+  override def getNextSync: IntegerProperty = nextSync
 
-  override def getMkmAccessTokenSecret: StringProperty
+  override def getInSync: BooleanProperty = inSync
 
-  = mkmAccessTokenSecret
-
-  override def getSnapUser: StringProperty
-
-  = snapUser
-
-  override def getSnapPassword: StringProperty
-
-  = snapPassword
-
-  override def getSnapToken: StringProperty
-
-  = snapToken
-
-  override def getOutput: StringProperty
-
-  = output
-
-  override def getInterval: IntegerProperty
-
-  = interval
-
-  override def getNextSync: IntegerProperty
-
-  = nextSync
-
-  override def getInSync: BooleanProperty
-
-  = inSync
-
-  override def getRequest: ObjectProperty
-
-  = request
+  override def getRequest: ObjectProperty = request
 
   def getLog: ObjectProperty = logs
 }
