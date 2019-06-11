@@ -2,6 +2,7 @@ package omnimtg;
 
 import omnimtg.Interfaces.NativeFunctionProvider;
 import omnimtg.Config;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.BufferedReader;
@@ -102,7 +103,6 @@ public class M11DedicatedApp {
             // String oauth_nonce = "" + System.currentTimeMillis() ;
             String oauth_nonce = "53eb1f44909d6";
 
-
             String encodedRequestURL = rawurlencode(requestURL);
 
             String baseString = method + "&" + encodedRequestURL + "&";
@@ -148,6 +148,9 @@ public class M11DedicatedApp {
                 connection.setDoInput(true);
                 //}
                 connection.setDoOutput(true);
+                int sec = 60 * 60;
+                connection.setConnectTimeout(sec * 1000);
+                nativeFunctionProvider.println("connect to mkm, timeout " + sec + " sec...");
                 connection.connect();
 
                 byte[] outputInBytes = body.getBytes("UTF-8");

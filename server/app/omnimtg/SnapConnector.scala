@@ -34,8 +34,9 @@ class SnapConnector(func: NativeFunctionProvider) {
       val os = connection.getOutputStream
       os.write(outputInBytes)
     }
-    connection.setConnectTimeout(60 * 60 * 1000)
-    func.println("connect...")
+    val sec = 60 * 60
+    connection.setConnectTimeout(sec * 1000)
+    func.println("connect to snapcardster, timeout " + sec + " sec...")
     connection.connect
 
     val lastCode = connection.getResponseCode
