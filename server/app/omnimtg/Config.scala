@@ -12,6 +12,14 @@ class Config {}
 object Config {
   private var verbose = false
 
+  private var timeout = 60 * 60 * 1000
+
+  def getTimeout: Int = timeout
+
+  def setTimeout(x: Int): Unit = {
+    timeout = x
+  }
+
   def isVerbose: Boolean = verbose
 
   def setVerbose(x: Boolean): Unit = {

@@ -148,9 +148,9 @@ public class M11DedicatedApp {
                 connection.setDoInput(true);
                 //}
                 connection.setDoOutput(true);
-                int sec = 60 * 60;
-                connection.setConnectTimeout(sec * 1000);
-                nativeFunctionProvider.println("connect to mkm, timeout " + sec + " sec...");
+                int timeoutMs = Config.getTimeout();
+                connection.setConnectTimeout(timeoutMs);
+                nativeFunctionProvider.println("connect to mkm, timeout " + timeoutMs + " ms...");
                 connection.connect();
 
                 byte[] outputInBytes = body.getBytes("UTF-8");

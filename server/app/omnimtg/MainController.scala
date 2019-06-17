@@ -152,9 +152,18 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       val x = env.get("verbose")
       if (x != null && x != "") {
         Config.setVerbose(java.lang.Boolean.parseBoolean(x))
-        println("Config.verbose was set to " + Config.isVerbose)
+        println("Config verbose was set to " + Config.isVerbose)
       }
     }
+
+    if (env.containsKey("timeout")) {
+      val x = env.get("timeout")
+      if (x != null && x != "") {
+        Config.setTimeout(x.toInt)
+        println("Config timeout was set to " + Config.getTimeout)
+      }
+    }
+
     thread = run(nativeBase)
   }
 
