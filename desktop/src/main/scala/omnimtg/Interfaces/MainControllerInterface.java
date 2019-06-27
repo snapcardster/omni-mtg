@@ -1,4 +1,4 @@
-package com.snapcardster.omnimtg.Interfaces;
+package omnimtg.Interfaces;
 
 import java.util.Properties;
 
@@ -36,11 +36,15 @@ public interface MainControllerInterface {
 
     IntegerProperty getInterval();
 
-    IntegerProperty getnextSync();
+    IntegerProperty getNextSync();
+
+    BooleanProperty getInSync();
+
+    ObjectProperty getRequest();
 
     void loginSnap();
 
-    void insertFromClip(String mode,String data);
+    void insertFromClip(String mode, String data);
 
     void start(Object nativeBase);
 }

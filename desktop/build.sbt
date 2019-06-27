@@ -11,7 +11,7 @@ lazy val root = (project in file(".")).
   settings(
     //  assemblySettings : _*,
     inThisBuild(commonSettings),
-    mainClass in assembly := Some("com.snapcardster.omnimtg.Main"),
+    mainClass in assembly := Some("omnimtg.Main"),
     assemblyJarName in assembly := "omni-mtg.jar",
     assemblyMergeStrategy in assembly := {
       case PathList("META-INF", xs@_*) => MergeStrategy.discard

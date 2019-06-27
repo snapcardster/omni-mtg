@@ -150,6 +150,7 @@ public class M11DedicatedApp {
                 connection.setDoOutput(true);
                 int timeoutMs = Config.getTimeout();
                 connection.setConnectTimeout(timeoutMs);
+
                 nativeFunctionProvider.println("connect to mkm, timeout " + timeoutMs + " ms...");
                 connection.connect();
 

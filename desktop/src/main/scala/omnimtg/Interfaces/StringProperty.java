@@ -1,4 +1,4 @@
-package com.snapcardster.omnimtg.Interfaces;
+package omnimtg.Interfaces;
 
 public interface StringProperty {
     void setValue(String value);

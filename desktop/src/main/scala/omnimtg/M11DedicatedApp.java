@@ -1,6 +1,7 @@
-package com.snapcardster.omnimtg;
+package omnimtg;
 
-import com.snapcardster.omnimtg.Interfaces.NativeFunctionProvider;
+import omnimtg.Interfaces.NativeFunctionProvider;
+import omnimtg.Config;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -11,7 +12,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.util.*;
+import java.util.GregorianCalendar;
 
 /**
  * https://www.mkmapi.eu/ws/documentation/API:Auth_java
@@ -32,7 +33,8 @@ public class M11DedicatedApp {
     /**
      * Constructor. Fill parameters according to given MKM profile app parameters.
      */
-    public M11DedicatedApp(String appToken, String appSecret, String accessToken, String accessSecret, NativeFunctionProvider nativeFunctionProvider) {
+    public M11DedicatedApp(String appToken, String appSecret, String accessToken, String accessSecret,
+                           NativeFunctionProvider nativeFunctionProvider) {
         _mkmAppToken = appToken;
         _mkmAppSecret = appSecret;
         _mkmAccessToken = accessToken;
@@ -60,10 +62,11 @@ public class M11DedicatedApp {
     }
 
     private void _debug(String msg) {
-        if (_debug) {
-            System.out.print(GregorianCalendar.getInstance().getTime());
-            System.out.print(" > ");
-            System.out.println(msg);
+        if (_debug || Config.isVerbose()) {
+            Object time = GregorianCalendar.getInstance().getTime();
+            String res = time + " > " + msg;
+            System.out.print(res);
+            this.nativeFunctionProvider.println(res);
         }
     }
 
@@ -100,7 +103,6 @@ public class M11DedicatedApp {
             // String oauth_nonce = "" + System.currentTimeMillis() ;
             String oauth_nonce = "53eb1f44909d6";
 
-
             String encodedRequestURL = rawurlencode(requestURL);
 
             String baseString = method + "&" + encodedRequestURL + "&";
@@ -134,8 +136,8 @@ public class M11DedicatedApp {
 
             HttpURLConnection connection = (HttpURLConnection) new URL(requestURL).openConnection();
             connection.addRequestProperty("Authorization", authorizationProperty);
-            _debug("Authorization: " + authorizationProperty);
-            _debug("Body: " + body);
+            //_debug("Authorization: " + authorizationProperty);
+            //_debug("Body: " + body);
             connection.setRequestMethod(method);
             if (body != null) {
                 connection.setRequestProperty("Content-Type", contentType);
@@ -146,6 +148,10 @@ public class M11DedicatedApp {
                 connection.setDoInput(true);
                 //}
                 connection.setDoOutput(true);
+                int timeoutMs = Config.getTimeout();
+                connection.setConnectTimeout(timeoutMs);
+
+                nativeFunctionProvider.println("connect to mkm, timeout " + timeoutMs + " ms...");
                 connection.connect();
 
                 byte[] outputInBytes = body.getBytes("UTF-8");
@@ -160,7 +166,8 @@ public class M11DedicatedApp {
 
             _lastCode = connection.getResponseCode();
 
-            _debug("Response Code is " + _lastCode + " " + connection.getResponseMessage());
+            //_debug("Response Code is " + _lastCode + " " + connection.getResponseMessage());
+            _debug("Response Code is " + _lastCode);
 
             if (200 == _lastCode || 401 == _lastCode || 404 == _lastCode) {
                 BufferedReader rd = new BufferedReader(new InputStreamReader(_lastCode == 200 ? connection.getInputStream() : connection.getErrorStream()));
@@ -171,13 +178,16 @@ public class M11DedicatedApp {
                 }
                 rd.close();
                 _lastContent = sb.toString();
-                _debug("Response Content is \n" + _lastContent);
+                if (Config.isVerbose()) {
+                    _debug("Response Content is \n" + _lastContent);
+                }
+                //
             }
 
             return (_lastCode == 200);
 
         } catch (Exception e) {
-            _debug("(!) Error while requesting " + requestURL);
+            _debug("(!) Error while requesting " + requestURL + ": " + e.toString());
             _lastError = e;
         }
         return false;

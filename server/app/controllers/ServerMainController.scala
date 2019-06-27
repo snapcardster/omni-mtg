@@ -28,7 +28,7 @@ class ServerFunctionProvider() extends omnimtg.DesktopFunctionProvider() {
 
   override def println(x: Any): Unit = {
     Logger.info(String.valueOf(x))
-    Predef.println(x)
+    // Predef.println(x)
   }
 }
 

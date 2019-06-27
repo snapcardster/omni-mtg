@@ -1,43 +1,60 @@
-package com.snapcardster.omnimtg
+package omnimtg
 
+import omnimtg.Interfaces._
 import java.io._
 import java.nio.file._
 import java.util
 import java.util.regex._
 import java.util.zip._
 import java.util.{Date, Properties}
+import com.google.gson._
 
 import javax.xml.parsers.DocumentBuilderFactory
+// import org.apache.commons.lang3.StringUtils
 import org.w3c.dom.{Document, Node, NodeList}
 
 import scala.collection.mutable.ListBuffer
 
+case class LogItem(timestamp: Long, text: String, deleted: List[String], changed: List[String], added: List[String])
+
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
-  val title = "Omni MTG Sync Tool, v4 / 2019-05-06"
+  def println(x: Any): Unit = {
+    nativeProvider.println(x)
+  }
+
+  val title: String = "Omni MTG Sync Tool 2019-05-29 [H]"
 
   // when scryfall deployed: 3, before: 2
-  val version = "3"
+  val snapApiVersion: String = "3"
 
   // TODO: change back to test after test
-  val snapBaseUrl: String = "https://api.snapcardster.com"
+  var snapBaseUrl: String = "https://api.snapcardster.com"
   //val snapBaseUrl: String = "https://dev.snapcardster.com"
   //val snapBaseUrl: String =  "https://test.snapcardster.com"
   //val snapBaseUrl: String = "http://localhost:9000"
 
-  val snapCsvEndpoint: String = snapBaseUrl + s"/importer/sellerdata/from/csv/$version"
-  val snapLoginEndpoint: String = snapBaseUrl + "/auth"
-  val snapChangedEndpoint: String = snapBaseUrl + s"/marketplace/sellerdata/changed/$version"
+  val CHANGED: String = "changed"
+  val ADDED: String = "added"
+  val REMOVED: String = "removed"
+  val RESERVED: String = "reserved"
+
+  def snapCsvEndpoint: String = snapBaseUrl + s"/importer/sellerdata/from/csv/$snapApiVersion"
+
+  def snapLoginEndpoint: String = snapBaseUrl + "/auth"
+
+  def snapChangedEndpoint: String = snapBaseUrl + s"/marketplace/sellerdata/changed/$snapApiVersion"
 
   val mkmBaseUrl: String = "https://api.cardmarket.com/ws/v2.0"
   val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
   val mkmStockFileEndpoint: String = mkmBaseUrl + "/output.json/stock/file"
 
-  private var thread: Thread = _
+  private var thread: Thread = null
   private val prop: Properties = new Properties
   private val backupPath: Path = null
   //Paths.get("mkm_backup_" + System.currentTimeMillis() + ".csv")
   private val aborted: BooleanProperty = propFactory.newBooleanProperty(false)
   private val running: BooleanProperty = propFactory.newBooleanProperty(false)
+  private val inSync: BooleanProperty = propFactory.newBooleanProperty(false)
   private val mkmAppToken: StringProperty = propFactory.newStringProperty("mkmApp", "", prop)
   private val mkmAppSecret: StringProperty = propFactory.newStringProperty("mkmAppSecret", "", prop)
   private val mkmAccessToken: StringProperty = propFactory.newStringProperty("mkmAccessToken", "", prop)
@@ -48,8 +65,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   private val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
   private val interval: IntegerProperty = propFactory.newIntegerProperty("interval", 180, prop)
   private val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
-
-  var backupFirst = true
+  private val request: ObjectProperty = propFactory.newObjectProperty(null)
+  private val logs: ObjectProperty = propFactory.newObjectProperty(Nil)
+  //private var backupFirst = true
+  private var addedList: List[String] = Nil
+  private var changedList: List[String] = Nil
+  private var deletedList: List[String] = Nil
 
   def insertFromClip(mode: String, data: String): Unit = {
     mode match {
@@ -87,6 +108,65 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     thread = run(nativeBase)
   }
 
+  // called by server, ENV-Var to .properties logic
+  def startServer(nativeBase: Object): Unit = {
+    val env = System.getenv()
+    val keys = Seq("mkmApp", "mkmAppSecret", "mkmAccessToken", "mkmAccessTokenSecret", "snapUser", "snapToken")
+    var containedOne = false
+    keys.foreach { k =>
+
+      if (env.containsKey(k)) {
+        val x = env.get(k)
+        if (x != null && x != "") {
+          containedOne = true
+          prop.setProperty(k, x)
+        }
+      }
+    }
+    if (containedOne) {
+      save(null)
+    }
+
+    if (env.containsKey("snapBaseUrl")) {
+      val x = env.get("snapBaseUrl")
+      if (x != null && x != "") {
+        snapBaseUrl = x
+        println("snapBaseUrl was set to " + snapBaseUrl)
+      }
+    }
+
+    readProperties(nativeBase)
+
+    if (keys.forall(k => Option(prop.getProperty(k)).getOrElse("").nonEmpty)) {
+      running.setValue(true)
+      val str = title + "\nAll values were set in prop, autostarted. The properties file seems to be ok."
+      println(str)
+      output.setValue(str)
+    } else {
+      val str = title + "\nNot all values were set in prop, no autostart. You can check the properties file."
+      println(str)
+      output.setValue(str)
+    }
+
+    if (env.containsKey("verbose")) {
+      val x = env.get("verbose")
+      if (x != null && x != "") {
+        Config.setVerbose(java.lang.Boolean.parseBoolean(x))
+        println("Config verbose was set to " + Config.isVerbose)
+      }
+    }
+
+    if (env.containsKey("timeout")) {
+      val x = env.get("timeout")
+      if (x != null && x != "") {
+        Config.setTimeout(x.toInt)
+        println("Config timeout was set to " + Config.getTimeout)
+      }
+    }
+
+    thread = run(nativeBase)
+  }
+
   def save(nativeBase: Object): Unit = {
     println("save props")
     val ex = nativeProvider.save(prop, nativeBase)
@@ -95,11 +175,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
   }
 
+  def snapConnector = new SnapConnector(nativeProvider)
+
   def loginSnap(): Unit = {
     output.setValue(outputPrefix() + "Logging in to Snapcardster...")
     val body = s"""{\"userId\":\"${snapUser.getValue}\",\"password\":\"${snapPassword.getValue}\"}"""
     output.setValue(outputPrefix() + body)
-    val res = new SnapConnector().call(snapLoginEndpoint, "POST", body = body)
+    val res = snapConnector.call(snapLoginEndpoint, "POST", body = body)
     if (res == null) {
       snapToken.setValue("")
     } else {
@@ -130,25 +212,39 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
           if (running.getValue) {
             nextSync.setValue(0)
             try {
+              inSync.setValue(true)
               sync(nativeBase)
+              inSync.setValue(false)
             } catch {
-              case e: Exception => handleEx(e)
+              case e: Exception =>
+                handleEx(e)
+                inSync.setValue(false)
+            }
+            request.getValue match {
+              case r: Runnable => r.run
+              case null => () // ok, runnable or nothing
+              case x => println("request was " + x + ", expected Runnable")
             }
 
             val seconds = interval.getValue.intValue
+            nativeProvider.println("- Waiting " + seconds + " seconds until next sync...")
             for (x <- 1.to(seconds)) {
-              if (seconds == interval.getValue.intValue) { // abort wait if changed during wait
-                nextSync.setValue(seconds - x)
-                Thread.sleep(1000)
-              } else {
-                Thread.sleep(10)
+              // don't abort wait if changed during wait
+              //if (seconds == interval.getValue.intValue) {
+              nextSync.setValue(seconds - x)
+              Thread.sleep(1000)
+              if (x % 10 == 0) {
+                nativeProvider.println(" - Waited " + x + " seconds, out of " + seconds + "  until next sync...")
               }
+              //} else {
+              //Thread.sleep(1000)
+              //}
             }
           } else {
+            // not running, just wait
             Thread.sleep(1000)
           }
         }
-
       }
     })
     t.start()
@@ -156,28 +252,41 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def sync(nativeBase: Object): Unit = {
-    if (backupFirst) {
-      // Create a local backup of the MKM Stock
-      output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
-      val csv = loadMkmStock()
-
-      nativeProvider.saveToFile(s"backup_${System.currentTimeMillis}.csv", csv, nativeBase)
-
-      backupFirst = false
+    //if (backupFirst) {
+    // Create a local backup of the MKM Stock
+    output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
+    var csv = loadMkmStock()
+    val bFile = s"backup_${System.currentTimeMillis}.csv"
+    val saveBackupPath = new File(File.separatorChar + "backup" + File.separatorChar + bFile) //Paths.get("backup", bFile).toFile
+    try {
+      saveBackupPath.getParentFile.mkdirs
+    } catch {
+      case e: Exception => println(e)
+    }
+    val saveBackupPathAbsolute = saveBackupPath.getAbsolutePath
+    val e = nativeProvider.saveToFile(saveBackupPathAbsolute, csv, nativeBase)
+    if (e != null) {
+      println(e)
     }
 
+    //backupFirst = false
+    //}
+
     val sb = new StringBuilder
-    val res1 = loadSnapChangedAndDeleteFromStock(sb)
+    output.setValue(outputPrefix() + "Load snap changes...")
+
+    // result of this method is already appended to output:
+    loadSnapChangedAndDeleteFromStock(sb)
 
     sb.append("Loading MKM stock...\n")
-    val csv = loadMkmStock()
+    csv = loadMkmStock()
     sb.append("  " + csv.count(x => x == '\n') + " lines read from mkm stock\n")
     output.setValue(sb.toString)
 
     val res = postToSnap(csv)
 
     // output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
-    println("res:" + res)
+    println("res has a length of " + res.length)
     val items = getChangeItems(res)
 
     val info =
@@ -188,9 +297,22 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     sb.append("• MKM to Snapcardster, changes at Snapcardster:\n" + info)
     output.setValue(sb.toString)
+
+    addLogEntry
   }
 
-  private def readableChanges(items: Seq[SellerDataChanged]): String = {
+  def getLogs: List[LogItem] = {
+    LogItem(System.currentTimeMillis, "Latest response: \n" + output.getValue, Nil, Nil, Nil) :: logs.getValue.asInstanceOf[List[LogItem]]
+  }
+
+  def addLogEntry: Unit = {
+    if (deletedList.nonEmpty || changedList.nonEmpty || addedList.nonEmpty) {
+      val item = LogItem(System.currentTimeMillis, output.getValue, deletedList, changedList, addedList)
+      logs.setValue(item :: logs.getValue.asInstanceOf[List[LogItem]])
+    }
+  }
+
+  def readableChanges(items: Seq[SellerDataChanged]): String = {
     items.map(readableChangeEntry)
       .sortBy(x => x)
       .groupBy(x => x).toList.map(x => "  " + x._2.length + " " + x._1)
@@ -220,17 +342,23 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val list = getChangeItems(json)
 
     val removedOrReservedItems = list.flatMap { parts =>
-      if (parts.`type` == "removed" || parts.`type` == "reserved") {
+      if (parts.`type` == REMOVED || parts.`type` == RESERVED) {
         List(parts)
       } else {
         Nil
       }
     }
 
+    val readableRemove = readableChanges(removedOrReservedItems)
     info.append(
       "Will remove " + removedOrReservedItems.length + " items...\n"
-        + readableChanges(removedOrReservedItems) + "\n"
+        + readableRemove + "\n"
     )
+
+    deletedList = makeLogList(removedOrReservedItems)
+    addedList = makeLogList(list.filter(_.`type` == ADDED))
+    changedList = makeLogList(list.filter(_.`type` == CHANGED))
+
     output.setValue(info.toString)
 
     val resDel = deleteFromMkmStock(removedOrReservedItems)
@@ -238,21 +366,24 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     output.setValue(info.toString)
 
     var body = if (resDel.isEmpty) "[]" else resDel
-    var res = new SnapConnector().call(snapChangedEndpoint, "POST", getAuth, body)
+    var res = snapConnector.call(snapChangedEndpoint, "POST", getAuth, body)
     info.append("  " + res + "\n")
     output.setValue(info.toString)
 
     val addedItems = list.flatMap { parts =>
-      if (parts.`type` == "added" || parts.`type` == "changed") {
+      if (parts.`type` == ADDED || parts.`type` == CHANGED) {
         List(parts)
       } else {
         Nil
       }
     }
+
+    val addedReadable = readableChanges(addedItems)
     info.append(
       "Will add " + addedItems.length + " items...\n"
-        + readableChanges(addedItems) + "\n"
+        + addedReadable + "\n"
     )
+
     output.setValue(info.toString)
 
     val resAdd = addToMkmStock(addedItems)
@@ -263,12 +394,27 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     output.setValue(info.toString)
 
     body = if (resAdd.isEmpty) "[]" else resAdd
-    res = new SnapConnector().call(snapChangedEndpoint, "POST", getAuth, body)
+    res = snapConnector.call(snapChangedEndpoint, "POST", getAuth, body)
 
     info.append("  " + res + "\n")
     output.setValue(info.toString)
 
     info
+  }
+
+  def makeLogList(seq: Seq[SellerDataChanged]): List[String] = {
+    seq.map { x =>
+      val csv = x.info
+      x.`type` + " " + csv.name +
+        " (" + csv.editionCode + ") " + csv.language.shortString + " " +
+        csv.condition.shortString + (if (csv.foil) " Foil" else "") +
+        (if (csv.altered) " Altered" else "") +
+        (if (csv.signed) " Signed" else "") +
+        " " + csv.price + "€"
+    }
+      .sortBy(x => x)
+      .groupBy(x => x).toList.map(x => "  " + x._2.length + " " + x._1)
+      .toList
   }
 
   def getChangeItems(json: String): Array[SellerDataChanged] = {
@@ -282,6 +428,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   def handleEx(e: Throwable, obj: Any = null): Unit = {
     if (e != null) {
+      println(e)
       e.printStackTrace()
       output.setValue(errorText(e) + "\n" + obj)
     } else {
@@ -300,12 +447,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   def postToSnap(csv: String): String = {
     val body = new Gson().toJson(MKMCsv("mkmStock.csv", csv))
-    val res = new SnapConnector().call(snapCsvEndpoint, "POST", getAuth, body)
+    val res = snapConnector.call(snapCsvEndpoint, "POST", getAuth, body)
     res
   }
 
   def loadChangedFromSnap(): String = {
-    val res = new SnapConnector().call(snapChangedEndpoint, "GET", getAuth, null)
+    val res = snapConnector.call(snapChangedEndpoint, "GET", getAuth, null)
     res
   }
 
@@ -320,7 +467,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
       val builder = new GsonBuilder
       val obj = new Gson().fromJson(mkm.responseContent, classOf[MKMSomething])
-      System.out.println(obj.toString)
+      //      System.out.println(obj.toString)
       val result = obj.stock
 
       // get string content from base64'd gzip
@@ -339,11 +486,14 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
           content.add(line)
         }
       }
-      val csv = StringUtils.join(content, "\n")
+      val csv = content.toArray.mkString("\n") // StringUtils.join(content, "\n")
       csv
     } else {
-      var text = "Server response: " + mkm.responseCode + " "
-      if (mkm.lastError != null) text += mkm.lastError.toString
+      var text = "Error:" + mkmStockFileEndpoint + " had server response: " + mkm.responseCode + " "
+      if (mkm.lastError != null) {
+        text += mkm.lastError.toString
+      }
+      output.setValue(text)
       sys.error(text)
     }
   }
@@ -355,8 +505,19 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def deleteFromMkmStock(entries: Seq[SellerDataChanged]): String = {
+    val buf = ListBuffer[ImportConfirmation]()
+    for (seq <- entries.grouped(100)) {
+      deleteFromMkmStockWindowedRaw(seq) match {
+        case Left(x) => return x
+        case Right(res) => buf ++= res
+      }
+    }
+    new Gson().toJson(buf.toList.toArray)
+  }
+
+  def deleteFromMkmStockWindowedRaw(entries: Seq[SellerDataChanged]): Either[String, Array[ImportConfirmation]] = {
     if (entries.isEmpty)
-      return ""
+      return Right(Array())
 
     val mkm = getMkm
 
@@ -378,9 +539,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val hasOutput = false
     if (!mkm.request(mkmStockEndpoint, "DELETE", body, "application/xml", hasOutput)) {
       handleEx(mkm.lastError, entries)
-      getErrorString(mkm)
+      Left(getErrorString(mkm))
     } else {
-      getConfirmation(mkm.responseContent, "deleted", entries, added = false)
+      Right(getConfirmationRaw(mkm.responseContent, "deleted", entries, added = false))
     }
   }
 
@@ -486,7 +647,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def getConfirmation(xml: String, tagName: String, entriesInRequest: Seq[SellerDataChanged], added: Boolean): String = {
-    val ex = nativeProvider.saveToFile("xml-" + tagName + "-" + System.currentTimeMillis + ".xml", xml, null)
+    new Gson().toJson(getConfirmationRaw(xml, tagName, entriesInRequest, added))
+  }
+
+  def getConfirmationRaw(xml: String, tagName: String, entriesInRequest: Seq[SellerDataChanged], added: Boolean): Array[ImportConfirmation] = {
+    val ex = nativeProvider.saveToFile(
+      File.separatorChar + "logs" + File.separatorChar + "xml-" + tagName + "-" + System.currentTimeMillis + ".xml", xml, null
+    )
     if (ex == null) {
       println("Failed writing info xml: " + ex)
     }
@@ -561,7 +728,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       } else {
         Array()
       }
-    new Gson().toJson((xmlItems ++ needToRemove).toArray)
+    (xmlItems ++ needToRemove).toArray
   }
 
   override def getThread: Thread = thread
@@ -590,5 +757,11 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   override def getInterval: IntegerProperty = interval
 
-  override def getnextSync(): IntegerProperty = nextSync
+  override def getNextSync: IntegerProperty = nextSync
+
+  override def getInSync: BooleanProperty = inSync
+
+  override def getRequest: ObjectProperty = request
+
+  def getLog: ObjectProperty = logs
 }

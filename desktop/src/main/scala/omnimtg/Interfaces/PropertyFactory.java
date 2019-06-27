@@ -1,4 +1,4 @@
-package com.snapcardster.omnimtg.Interfaces;
+package omnimtg.Interfaces;
 
 import java.util.Properties;
 
@@ -12,4 +12,6 @@ public interface PropertyFactory {
     IntegerProperty newIntegerProperty(Integer initialValue);
 
     IntegerProperty newIntegerProperty(String name, Integer initialValue, Properties prop);
+
+    ObjectProperty newObjectProperty(Object value);
 }

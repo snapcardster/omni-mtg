@@ -1,15 +1,19 @@
-package com.snapcardster.omnimtg
+package omnimtg
 
+import omnimtg.Interfaces._
 import java.io._
 import java.net.{HttpURLConnection, URL}
 
-class SnapConnector {
+class SnapConnector(func: NativeFunctionProvider) {
   def call(requestURL: String, method: String, auth: String = null, body: String = null): String = {
-    System.out.println(auth + ", " + method + ": " + requestURL + " -> " + body)
+    func.println(
+      auth + ", " + method + ": " + requestURL + ", " +
+        (if (body == null) "no body" else "body is a string of length " + body.length)
+    )
     val connection: HttpURLConnection = new URL(requestURL).openConnection.asInstanceOf[HttpURLConnection]
     if (auth != null) {
       connection.addRequestProperty("Authorization", auth)
-      System.out.println("Auth:" + auth)
+      func.println("Auth:" + auth)
     }
     if (body != null) {
       connection.setRequestProperty("Content-Type", "application/json")
@@ -17,20 +21,27 @@ class SnapConnector {
     }
 
     connection.setRequestMethod(method)
-    System.out.println(connection.getRequestMethod)
+
     connection.setUseCaches(false)
     connection.setDoInput(true)
     if (body != null) {
       connection.setDoOutput(true)
       val outputInBytes = body.getBytes("UTF-8")
+      func.println(connection.getRequestMethod + "ing " + outputInBytes.length + " bytes...")
+      if (Config.isVerbose) {
+        func.println(connection.getRequestMethod + "ing <" + body + ">")
+      }
       val os = connection.getOutputStream
       os.write(outputInBytes)
     }
+    val timeoutMs = Config.getTimeout
+    connection.setConnectTimeout(timeoutMs)
+    func.println("connect to snapcardster, timeout " + timeoutMs + " ms...")
     connection.connect
 
-    System.out.println(requestURL + " response code:" + connection.getResponseCode)
-
     val lastCode = connection.getResponseCode
+    func.println(requestURL + " response code:" + lastCode)
+
 
     val str =
       if (lastCode == 200)

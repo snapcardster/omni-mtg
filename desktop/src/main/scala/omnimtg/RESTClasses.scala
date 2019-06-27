@@ -1,4 +1,4 @@
-package com.snapcardster.omnimtg
+package omnimtg
 
 case class Condition(
                       longString: String,

@@ -227,11 +227,15 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
             }
 
             val seconds = interval.getValue.intValue
+            nativeProvider.println("- Waiting " + seconds + " seconds until next sync...")
             for (x <- 1.to(seconds)) {
               // don't abort wait if changed during wait
               //if (seconds == interval.getValue.intValue) {
               nextSync.setValue(seconds - x)
               Thread.sleep(1000)
+              if (x % 10 == 0) {
+                nativeProvider.println(" - Waited " + x + " seconds, out of " + seconds + "  until next sync...")
+              }
               //} else {
               //Thread.sleep(1000)
               //}
@@ -242,9 +246,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
           }
         }
       }
-    }
-
-    )
+    })
     t.start()
     t
   }
