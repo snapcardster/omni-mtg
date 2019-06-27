@@ -27,7 +27,7 @@ class MainGUI extends Application {
   val button2Css = "--button-type: FLAT; -fx-background-color: green; -fx-text-fill: white;"
   var paneCss: String = "-fx-background-color:WHITE;-fx-padding:40;"
 
-  var imageBase64 = SnapHelpers.iconBase64
+  var imageBase64: String = SnapHelpers.iconBase64
 
   def pad(x: Region): Unit = x.setPadding(new Insets(1.0))
 

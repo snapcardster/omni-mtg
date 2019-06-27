@@ -281,12 +281,15 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     sb.append("Loading MKM stock...\n")
     csv = loadMkmStock()
     sb.append("  " + csv.count(x => x == '\n') + " lines read from mkm stock\n")
+    sb.append("Posting to Snap...\n")
     output.setValue(sb.toString)
 
     val res = postToSnap(csv)
 
     // output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
-    println("res has a length of " + res.length)
+    sb.append("OK, has a length of " + res.length)
+
+    output.setValue(sb.toString)
     val items = getChangeItems(res)
 
     val info =
