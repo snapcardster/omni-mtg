@@ -49,10 +49,10 @@
 ## TODO
 
 - [x] cardmarket.com integration
-- [x] mage.market integration
-- [x] Android Tablet Support
+- [x] magemarket.com integration
+- [x] Windows Support
 - [x] MacOS and Linux support
-- [ ] Interface clean up
+- [x] Interface clean up
 - [ ] eBay.com integration
 - [ ] TCGPlayer.com integration
 - [ ] Amazon.com integration

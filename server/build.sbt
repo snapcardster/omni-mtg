@@ -67,6 +67,7 @@ libraryDependencies ++= Seq(
   /*jdbc, ehcache,*/
   /*ws,*/
   /*specs2 % Test,*/
+  "junit" % "junit" % "4.4" % Test,
   guice,
   // "io.swagger" %% "swagger-scala-module" % "1.0.3",
   // "com.jfoenix" % "jfoenix" % "9.0.4",
