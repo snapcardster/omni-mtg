@@ -56,6 +56,7 @@ lazy val root = (project in file("app"))
     // name := "OmniMtg"
   )
 
+
 // sourceDirectory += baseDirectory(_ / "app")
 // sourceDirectories += baseDirectory(_ / "app")
 

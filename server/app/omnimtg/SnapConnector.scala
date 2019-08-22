@@ -6,6 +6,16 @@ import java.net.{HttpURLConnection, URL}
 
 class SnapConnector(func: NativeFunctionProvider) {
   def call(requestURL: String, method: String, auth: String = null, body: String = null): String = {
+    val timeoutMs = Config.getTimeout
+
+    TimeoutWatcher(timeoutMs, () =>
+      callCore(requestURL, method, auth, body)
+    ).run.getOrElse(
+      sys.error("Timeout: " + method + " " + requestURL + " did not complete within " + timeoutMs + "ms")
+    )
+  }
+
+  def callCore(requestURL: String, method: String, auth: String = null, body: String = null): String = {
     func.println(
       auth + ", " + method + ": " + requestURL + ", " +
         (if (body == null) "no body" else "body is a string of length " + body.length)
@@ -42,7 +52,6 @@ class SnapConnector(func: NativeFunctionProvider) {
 
     val lastCode = connection.getResponseCode
     func.println(requestURL + " response code:" + lastCode)
-
 
     val str =
       if (lastCode == 200)

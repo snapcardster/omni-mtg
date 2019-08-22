@@ -1,4 +1,5 @@
-set d=C:\Arbeit\omni-mtg\server\
+set d=D:/Arbeit/omni-mtg/server/
+set usrScala=C:/Users/Karsten/.IdeaIC2017.3/
 
 del /Q /F /S "%d%target\universal\omni-mtg"
 del /Q /F /S "%d%target\universal\omni-mtg.zip"
@@ -9,7 +10,7 @@ del /Q /F /S "%d%target\temp\omni-mtg"
 rmdir /Q /S "%d%target\temp\omni-mtg"
 rmdir /Q /S "%d%target\temp"
 
-"%JAVA_HOME%\bin\java.exe" -jar "C:/Users/Karsten/.IntelliJIdea2018.3/config/plugins/Scala/launcher/sbt-launch.jar" dist
+"%JAVA_HOME%\bin\java.exe" -jar "%usrScala%config/plugins/Scala/launcher/sbt-launch.jar" dist
 
 Powershell.exe -executionpolicy remotesigned -File extract.ps1
 

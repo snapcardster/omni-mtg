@@ -460,7 +460,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   def loadMkmStock(): String = {
     val mkm = getMkm
     val hasOutput = true
-    if (mkm.request(mkmStockFileEndpoint, "GET", null, null, hasOutput)) {
+    if (mkmReqTimoutable(mkmStockFileEndpoint, "GET", (url, method) =>
+      mkm.request(url, method, null, null, hasOutput))) {
 
       val builder = new GsonBuilder
       val obj = new Gson().fromJson(mkm.responseContent, classOf[MKMSomething])
@@ -534,7 +535,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       </request>
       """
     val hasOutput = false
-    if (!mkm.request(mkmStockEndpoint, "DELETE", body, "application/xml", hasOutput)) {
+    if (!mkmReqTimoutable(mkmStockEndpoint, "DELETE", (url, method) =>
+      mkm.request(url, method, body, "application/xml", hasOutput))) {
       handleEx(mkm.lastError, entries)
       Left(getErrorString(mkm))
     } else {
@@ -605,12 +607,20 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       </request>
       """
     val hasOutput = false
-    if (!mkm.request(mkmStockEndpoint, "POST", body, "application/xml", hasOutput)) {
+    if (!mkmReqTimoutable(mkmStockEndpoint, "POST", (url, method) =>
+      mkm.request(url, method, body, "application/xml", hasOutput))) {
       handleEx(mkm.lastError, entries)
       getErrorString(mkm)
     } else {
       getConfirmation(mkm.responseContent, "inserted", entries, added = true)
     }
+  }
+
+  def mkmReqTimoutable(endpoint: String, method: String, mkmRequestCall: (String, String) => Boolean): Boolean = {
+    val timeoutMs = Config.getTimeout
+    TimeoutWatcher(timeoutMs, () => mkmRequestCall(endpoint, method)).run.getOrElse(
+      sys.error("Timeout: " + method + " " + endpoint + " did not complete within " + timeoutMs + "ms")
+    )
   }
 
   def isTrue(x: String): Boolean = {
@@ -622,9 +632,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   /**
-    * https://www.mkyong.com/java/how-to-read-xml-file-in-java-dom-parser/
-    * https://www.owasp.org/index.php/Injection_Prevention_Cheat_Sheet_in_Java#XML:_External_Entity_attack
-    */
+   * https://www.mkyong.com/java/how-to-read-xml-file-in-java-dom-parser/
+   * https://www.owasp.org/index.php/Injection_Prevention_Cheat_Sheet_in_Java#XML:_External_Entity_attack
+   */
   def getXml(xmlDoc: String): Document = {
     val dbFactory = DocumentBuilderFactory.newInstance
     //dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
