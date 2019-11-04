@@ -38,64 +38,17 @@ class ProductLookup {
     app.request(mkmStockEndpoint, "GET", null, null, true)
 
     println(app.responseContent)
+    val xml = app.responseContent
 
-    val doc = getXml(app.responseContent)
-    val response = doc.getChildNodes.item(0)
-    val xml = xmlList(response.getChildNodes)
-    val idArticleToCollectorNumber =
-      xml.flatMap { x =>
-        val nodes = xmlList(x.getChildNodes)
-        val subNodes =
-          nodes.filter(x => x.getNodeName == "idArticle" || x.getNodeName == "product")
-
-        subNodes.find(_.getNodeName == "idArticle").map(_.getTextContent).flatMap { id =>
-          subNodes.find(_.getNodeName == "product").flatMap(x => xmlList(x.getChildNodes).find(_.getNodeName == "nr")
-            .map(_.getTextContent)).map(collectorNumber =>
-            id -> collectorNumber
-          )
-        }
-      }.toMap
-
-    println(idArticleToCollectorNumber.mkString("\n"))
 
     //println("ERR:" + app.lastError)
 
     app.request(mkmStockFileEndpoint, "GET", null, null, true)
-    val csv = loadMkmCsvLines(app.responseContent)
-    val csvWithCol = csv.map { line =>
-      val index = line.indexOf("\";\"")
-      val idArt = line.substring(1, index)
-      if (idArt == "idArticle")
-        line + ";\"Collector Number\""
-      else
-        line + idArticleToCollectorNumber.get(idArt).map(x => ";\"" + x + "\"").getOrElse("")
-    }
-    println(csvWithCol.mkString("\n"))
-  }
+    val m = new MainController(JavaFXPropertyFactory, new DesktopFunctionProvider)
+    val jsonWithCsv = app.responseContent
 
-  def loadMkmCsvLines(responseContent: String): Array[String] = {
-    val builder = new GsonBuilder
-    val obj = new Gson().fromJson(responseContent, classOf[MKMSomething])
-    //      System.out.println(obj.toString)
-    val result = obj.stock
-
-    // get string content from base64'd gzip
-    val arr: Array[Byte] = new DesktopFunctionProvider().decodeBase64(result)
-    val asd: ByteArrayInputStream = new ByteArrayInputStream(arr)
-    val gz: GZIPInputStream = new GZIPInputStream(asd)
-    val rd: BufferedReader = new BufferedReader(new InputStreamReader(gz))
-    val content: util.List[String] = new util.ArrayList[String]
-
-    var abort = false
-    while (!abort) {
-      val line = rd.readLine
-      if (line == null) {
-        abort = true
-      } else {
-        content.add(line)
-      }
-    }
-    content.toArray(new Array[String](content.size))
+    val csv = m.buildNewCsv(xml, jsonWithCsv)
+    println(csv)
   }
 
   def xmlList(list: NodeList): List[Node] = {

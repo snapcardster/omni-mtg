@@ -488,38 +488,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     // returns csv
     if (mkmReqTimoutable(mkmStockFileEndpoint, "GET", (url, method) =>
       mkm.request(url, method, null, null, hasOutput))) {
-
+      val jsonWithCsv = mkm.responseContent
       // returns product xml within result
       if (mkmReqTimoutable(mkmStockEndpoint, "GET", (url, method) =>
         mkm.request(url, method, null, null, hasOutput))) {
-        val doc = getXml(mkm.responseContent)
-        val response = doc.getChildNodes.item(0)
-        val xml = xmlList(response.getChildNodes)
-        val idArticleToCollectorNumber =
-          xml.flatMap { x =>
-            val nodes = xmlList(x.getChildNodes)
-            val subNodes =
-              nodes.filter(x => x.getNodeName == "idArticle" || x.getNodeName == "product")
-
-            subNodes.find(_.getNodeName == "idArticle").map(_.getTextContent).flatMap { id =>
-              subNodes.find(_.getNodeName == "product").flatMap(x => xmlList(x.getChildNodes).find(_.getNodeName == "nr")
-                .map(_.getTextContent)).map(collectorNumber =>
-                id -> collectorNumber
-              )
-            }
-          }.toMap
-
-        val csv: Array[String] = getCsvLines(mkm.responseContent)
-        val csvWithCol = csv.map { line =>
-          val index = line.indexOf("\";\"")
-          val idArt = line.substring(1, index)
-          if (idArt == "idArticle")
-            line + ";\"collectorNumber\""
-          else
-            line + idArticleToCollectorNumber.get(idArt).map(x => ";\"" + x + "\"").getOrElse("")
-        }
-
-        return csvWithCol.mkString("\n")
+        val xml = mkm.responseContent
+        return buildNewCsv(xml, jsonWithCsv)
       }
     }
 
@@ -530,6 +504,57 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     output.setValue(text)
     sys.error(text)
 
+  }
+
+  def buildNewCsv(xmlDocString: String, jsonWithCsv: String): String = {
+    val doc = getXml(xmlDocString)
+    val response = doc.getChildNodes.item(0)
+    val xml = xmlList(response.getChildNodes)
+    val idArticleToCollectorNumber =
+      xml.flatMap { x =>
+        val nodes = xmlList(x.getChildNodes)
+        val subNodes =
+          nodes.filter(x => x.getNodeName == "idArticle" || x.getNodeName == "product")
+
+        subNodes.find(_.getNodeName == "idArticle").map(_.getTextContent).flatMap { id =>
+          subNodes.find(_.getNodeName == "product").flatMap(x => xmlList(x.getChildNodes).find(_.getNodeName == "nr")
+            .map(_.getTextContent)).map(collectorNumber =>
+            id -> collectorNumber
+          )
+        }
+      }.toMap
+
+    val csv: Array[String] = getCsvLines(jsonWithCsv)
+    val csvWithCol = csv.map { line =>
+      val splitter = "\";\""
+      val parts = line.split(splitter)
+      val idArt = parts.head.substring(1)
+      /*
+          0;          1;             2;           3;     4;          5;      6; ...
+"idArticle";"idProduct";"English Name";"Local Name";"Exp.";"Exp. Name";"Price";"Language";"Condition";"Foil?";"Signed?";"Playset?";"Altered?";"Comments";"Amount";"onSale";"Collector Number"
+"561339329";"399979";"Murderous Rider // Swift End";"Murderous Rider // Swift End";"ELD";"Throne of Eldraine";"22.00";"1";"NM";"";"";"";"";"";"1";"1";"97"
+           */
+      val partsReplaced = parts.zipWithIndex.map { case (x, i) =>
+        if (idArt == "idArticle") {
+          x // header unchanged
+        } else {
+          if (i == 4) { // exp code to empty
+            ""
+          } else if (i == 5) { // exp name without : Extras (confuses backend)
+            x.replace(": Extras", "")
+          } else {
+            x
+          }
+        }
+      }
+      val result = partsReplaced.mkString(splitter)
+      if (idArt == "idArticle")
+        result + ";\"collectorNumber\""
+      else
+        result + idArticleToCollectorNumber.get(idArt).map(x => ";\"" + x + "\"").getOrElse("")
+    }
+
+    return csvWithCol.mkString("\n")
   }
 
   def getMkm: M11DedicatedApp = {
