@@ -457,43 +457,79 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     snapUser.getValue + "," + snapToken.getValue
   }
 
+  def getCsvLines(mkmResponse: String): Array[String] = {
+    val builder = new GsonBuilder
+    val obj = new Gson().fromJson(mkmResponse, classOf[MKMSomething])
+    //      System.out.println(obj.toString)
+    val result = obj.stock
+
+    // get string content from base64'd gzip
+    val arr: Array[Byte] = nativeProvider.decodeBase64(result)
+    val asd: ByteArrayInputStream = new ByteArrayInputStream(arr)
+    val gz: GZIPInputStream = new GZIPInputStream(asd)
+    val rd: BufferedReader = new BufferedReader(new InputStreamReader(gz))
+    val content: util.List[String] = new util.ArrayList[String]
+
+    var abort = false
+    while (!abort) {
+      val line = rd.readLine
+      if (line == null) {
+        abort = true
+      } else {
+        content.add(line)
+      }
+    }
+    content.toArray(new Array[String](content.size))
+  }
+
   def loadMkmStock(): String = {
     val mkm = getMkm
     val hasOutput = true
+    // returns csv
     if (mkmReqTimoutable(mkmStockFileEndpoint, "GET", (url, method) =>
       mkm.request(url, method, null, null, hasOutput))) {
 
-      val builder = new GsonBuilder
-      val obj = new Gson().fromJson(mkm.responseContent, classOf[MKMSomething])
-      //      System.out.println(obj.toString)
-      val result = obj.stock
+      // returns product xml within result
+      if (mkmReqTimoutable(mkmStockEndpoint, "GET", (url, method) =>
+        mkm.request(url, method, null, null, hasOutput))) {
+        val doc = getXml(mkm.responseContent)
+        val response = doc.getChildNodes.item(0)
+        val xml = xmlList(response.getChildNodes)
+        val idArticleToCollectorNumber =
+          xml.flatMap { x =>
+            val nodes = xmlList(x.getChildNodes)
+            val subNodes =
+              nodes.filter(x => x.getNodeName == "idArticle" || x.getNodeName == "product")
 
-      // get string content from base64'd gzip
-      val arr: Array[Byte] = nativeProvider.decodeBase64(result)
-      val asd: ByteArrayInputStream = new ByteArrayInputStream(arr)
-      val gz: GZIPInputStream = new GZIPInputStream(asd)
-      val rd: BufferedReader = new BufferedReader(new InputStreamReader(gz))
-      val content: util.List[String] = new util.ArrayList[String]
+            subNodes.find(_.getNodeName == "idArticle").map(_.getTextContent).flatMap { id =>
+              subNodes.find(_.getNodeName == "product").flatMap(x => xmlList(x.getChildNodes).find(_.getNodeName == "nr")
+                .map(_.getTextContent)).map(collectorNumber =>
+                id -> collectorNumber
+              )
+            }
+          }.toMap
 
-      var abort = false
-      while (!abort) {
-        val line = rd.readLine
-        if (line == null) {
-          abort = true
-        } else {
-          content.add(line)
+        val csv: Array[String] = getCsvLines(mkm.responseContent)
+        val csvWithCol = csv.map { line =>
+          val index = line.indexOf("\";\"")
+          val idArt = line.substring(1, index)
+          if (idArt == "idArticle")
+            line + ";\"collectorNumber\""
+          else
+            line + idArticleToCollectorNumber.get(idArt).map(x => ";\"" + x + "\"").getOrElse("")
         }
+
+        return csvWithCol.mkString("\n")
       }
-      val csv = content.toArray.mkString("\n") // StringUtils.join(content, "\n")
-      csv
-    } else {
-      var text = "Error:" + mkmStockFileEndpoint + " had server response: " + mkm.responseCode + " "
-      if (mkm.lastError != null) {
-        text += mkm.lastError.toString
-      }
-      output.setValue(text)
-      sys.error(text)
     }
+
+    var text = "Error:" + mkmStockFileEndpoint + " had server response: " + mkm.responseCode + " "
+    if (mkm.lastError != null) {
+      text += mkm.lastError.toString
+    }
+    output.setValue(text)
+    sys.error(text)
+
   }
 
   def getMkm: M11DedicatedApp = {

@@ -273,23 +273,17 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     //}
 
     val sb = new StringBuilder
-    output.setValue(outputPrefix() + "Load snap changes...")
-
-    // result of this method is already appended to output:
-    loadSnapChangedAndDeleteFromStock(sb)
+    val res1 = loadSnapChangedAndDeleteFromStock(sb)
 
     sb.append("Loading MKM stock...\n")
     csv = loadMkmStock()
     sb.append("  " + csv.count(x => x == '\n') + " lines read from mkm stock\n")
-    sb.append("Posting to Snap...\n")
     output.setValue(sb.toString)
 
     val res = postToSnap(csv)
 
     // output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
-    sb.append("OK, has a length of " + res.length)
-
-    output.setValue(sb.toString)
+    println("res has a length of " + res.length)
     val items = getChangeItems(res)
 
     val info =
@@ -463,42 +457,79 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     snapUser.getValue + "," + snapToken.getValue
   }
 
+  def getCsvLines(mkmResponse: String): Array[String] = {
+    val builder = new GsonBuilder
+    val obj = new Gson().fromJson(mkmResponse, classOf[MKMSomething])
+    //      System.out.println(obj.toString)
+    val result = obj.stock
+
+    // get string content from base64'd gzip
+    val arr: Array[Byte] = nativeProvider.decodeBase64(result)
+    val asd: ByteArrayInputStream = new ByteArrayInputStream(arr)
+    val gz: GZIPInputStream = new GZIPInputStream(asd)
+    val rd: BufferedReader = new BufferedReader(new InputStreamReader(gz))
+    val content: util.List[String] = new util.ArrayList[String]
+
+    var abort = false
+    while (!abort) {
+      val line = rd.readLine
+      if (line == null) {
+        abort = true
+      } else {
+        content.add(line)
+      }
+    }
+    content.toArray(new Array[String](content.size))
+  }
+
   def loadMkmStock(): String = {
     val mkm = getMkm
     val hasOutput = true
-    if (mkm.request(mkmStockFileEndpoint, "GET", null, null, hasOutput)) {
+    // returns csv
+    if (mkmReqTimoutable(mkmStockFileEndpoint, "GET", (url, method) =>
+      mkm.request(url, method, null, null, hasOutput))) {
 
-      val builder = new GsonBuilder
-      val obj = new Gson().fromJson(mkm.responseContent, classOf[MKMSomething])
-      //      System.out.println(obj.toString)
-      val result = obj.stock
+      // returns product xml within result
+      if (mkmReqTimoutable(mkmStockEndpoint, "GET", (url, method) =>
+        mkm.request(url, method, null, null, hasOutput))) {
+        val doc = getXml(mkm.responseContent)
+        val response = doc.getChildNodes.item(0)
+        val xml = xmlList(response.getChildNodes)
+        val idArticleToCollectorNumber =
+          xml.flatMap { x =>
+            val nodes = xmlList(x.getChildNodes)
+            val subNodes =
+              nodes.filter(x => x.getNodeName == "idArticle" || x.getNodeName == "product")
 
-      // get string content from base64'd gzip
-      val arr: Array[Byte] = nativeProvider.decodeBase64(result)
-      val asd: ByteArrayInputStream = new ByteArrayInputStream(arr)
-      val gz: GZIPInputStream = new GZIPInputStream(asd)
-      val rd: BufferedReader = new BufferedReader(new InputStreamReader(gz))
-      val content: util.List[String] = new util.ArrayList[String]
+            subNodes.find(_.getNodeName == "idArticle").map(_.getTextContent).flatMap { id =>
+              subNodes.find(_.getNodeName == "product").flatMap(x => xmlList(x.getChildNodes).find(_.getNodeName == "nr")
+                .map(_.getTextContent)).map(collectorNumber =>
+                id -> collectorNumber
+              )
+            }
+          }.toMap
 
-      var abort = false
-      while (!abort) {
-        val line = rd.readLine
-        if (line == null) {
-          abort = true
-        } else {
-          content.add(line)
+        val csv: Array[String] = getCsvLines(mkm.responseContent)
+        val csvWithCol = csv.map { line =>
+          val index = line.indexOf("\";\"")
+          val idArt = line.substring(1, index)
+          if (idArt == "idArticle")
+            line + ";\"collectorNumber\""
+          else
+            line + idArticleToCollectorNumber.get(idArt).map(x => ";\"" + x + "\"").getOrElse("")
         }
+
+        return csvWithCol.mkString("\n")
       }
-      val csv = content.toArray.mkString("\n") // StringUtils.join(content, "\n")
-      csv
-    } else {
-      var text = "Error:" + mkmStockFileEndpoint + " had server response: " + mkm.responseCode + " "
-      if (mkm.lastError != null) {
-        text += mkm.lastError.toString
-      }
-      output.setValue(text)
-      sys.error(text)
     }
+
+    var text = "Error:" + mkmStockFileEndpoint + " had server response: " + mkm.responseCode + " "
+    if (mkm.lastError != null) {
+      text += mkm.lastError.toString
+    }
+    output.setValue(text)
+    sys.error(text)
+
   }
 
   def getMkm: M11DedicatedApp = {
@@ -540,7 +571,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       </request>
       """
     val hasOutput = false
-    if (!mkm.request(mkmStockEndpoint, "DELETE", body, "application/xml", hasOutput)) {
+    if (!mkmReqTimoutable(mkmStockEndpoint, "DELETE", (url, method) =>
+      mkm.request(url, method, body, "application/xml", hasOutput))) {
       handleEx(mkm.lastError, entries)
       Left(getErrorString(mkm))
     } else {
@@ -611,12 +643,20 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       </request>
       """
     val hasOutput = false
-    if (!mkm.request(mkmStockEndpoint, "POST", body, "application/xml", hasOutput)) {
+    if (!mkmReqTimoutable(mkmStockEndpoint, "POST", (url, method) =>
+      mkm.request(url, method, body, "application/xml", hasOutput))) {
       handleEx(mkm.lastError, entries)
       getErrorString(mkm)
     } else {
       getConfirmation(mkm.responseContent, "inserted", entries, added = true)
     }
+  }
+
+  def mkmReqTimoutable(endpoint: String, method: String, mkmRequestCall: (String, String) => Boolean): Boolean = {
+    val timeoutMs = Config.getTimeout
+    TimeoutWatcher(timeoutMs, () => mkmRequestCall(endpoint, method)).run.getOrElse(
+      sys.error("Timeout: " + method + " " + endpoint + " did not complete within " + timeoutMs + "ms")
+    )
   }
 
   def isTrue(x: String): Boolean = {
@@ -628,9 +668,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   /**
-    * https://www.mkyong.com/java/how-to-read-xml-file-in-java-dom-parser/
-    * https://www.owasp.org/index.php/Injection_Prevention_Cheat_Sheet_in_Java#XML:_External_Entity_attack
-    */
+   * https://www.mkyong.com/java/how-to-read-xml-file-in-java-dom-parser/
+   * https://www.owasp.org/index.php/Injection_Prevention_Cheat_Sheet_in_Java#XML:_External_Entity_attack
+   */
   def getXml(xmlDoc: String): Document = {
     val dbFactory = DocumentBuilderFactory.newInstance
     //dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
