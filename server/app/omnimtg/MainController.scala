@@ -7,9 +7,11 @@ import java.util
 import java.util.regex._
 import java.util.zip._
 import java.util.{Date, Properties}
-import com.google.gson._
 
+import com.google.gson._
 import javax.xml.parsers.DocumentBuilderFactory
+
+import scala.collection.mutable
 // import org.apache.commons.lang3.StringUtils
 import org.w3c.dom.{Document, Node, NodeList}
 
@@ -46,6 +48,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   val mkmBaseUrl: String = "https://api.cardmarket.com/ws/v2.0"
   val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
+  val mkmProductEndpoint: String = mkmBaseUrl + "/products"
   val mkmStockFileEndpoint: String = mkmBaseUrl + "/output.json/stock/file"
 
   private var thread: Thread = null
@@ -482,32 +485,50 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     content.toArray(new Array[String](content.size))
   }
 
-  def loadMkmStock(): String = {
-    val mkm = getMkm
-    val hasOutput = true
-    // returns csv
-    if (mkmReqTimoutable(mkmStockFileEndpoint, "GET", (url, method) =>
-      mkm.request(url, method, null, null, hasOutput))) {
-      val jsonWithCsv = mkm.responseContent
-      // returns product xml within result
-      if (mkmReqTimoutable(mkmStockEndpoint, "GET", (url, method) =>
-        mkm.request(url, method, null, null, hasOutput))) {
-        val xml = mkm.responseContent
-        return buildNewCsv(xml, jsonWithCsv)
+  var idArticleToCollectorNumber: mutable.Map[String, String] = new mutable.HashMap[String, String]
+
+  def calcLookup(mkm: M11DedicatedApp, productIdsForExtras: Set[String]): Int = {
+    productIdsForExtras.toSeq.flatMap { id =>
+      mkmReqTimoutable(mkmProductEndpoint + "/" + id, "GET", (url, method) =>
+        mkm.request(url, method, null, null, true)) match {
+        case false => None
+        case true =>
+          val number =
+            xmlList(getXml(mkm.responseContent).getFirstChild.getChildNodes)
+              .find(x => x.getNodeName == "product").flatMap(x =>
+              xmlList(x.getChildNodes).find(x => x.getNodeName == "number")
+                .map(_.getTextContent))
+
+
+          //        println(productIdsForExtras.head + ":=>>" + number)
+          number.map { num =>
+            idArticleToCollectorNumber.put(id, num)
+            1
+          }
       }
-    }
-
-    var text = "Error:" + mkmStockFileEndpoint + " had server response: " + mkm.responseCode + " "
-    if (mkm.lastError != null) {
-      text += mkm.lastError.toString
-    }
-    output.setValue(text)
-    sys.error(text)
-
+    }.sum
   }
 
-  def buildNewCsv(xmlDocString: String, jsonWithCsv: String): String = {
-    val doc = getXml(xmlDocString)
+  def refreshLookupIfNeeded(mkm: M11DedicatedApp, csv: Array[String]): Unit = {
+    val productIdsForExtras =
+      csv.flatMap { x =>
+        val parts = x.split(splitter)
+        val idProduct = parts(1)
+        val expName = parts(5)
+        if (expName.contains(": Extras")) {
+          Some(idProduct)
+        } else {
+          None
+        }
+      }.toSet
+
+    val diff = productIdsForExtras.diff(idArticleToCollectorNumber.keySet)
+    if (diff.nonEmpty) {
+      val newEntries = calcLookup(mkm, diff)
+      println("collectorNumber lookup: newEntries=" + newEntries + ", total: " + idArticleToCollectorNumber.size)
+    }
+
+    /*val doc = getXml(xmlDocString)
     val response = doc.getChildNodes.item(0)
     val xml = xmlList(response.getChildNodes)
     val idArticleToCollectorNumber =
@@ -522,20 +543,75 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
             id -> collectorNumber
           )
         }
-      }.toMap
+      }.toMap*/
+  }
 
-    val csv: Array[String] = getCsvLines(jsonWithCsv)
+  def getCsvWithProductInfo(mkm: M11DedicatedApp): Option[String] = {
+    if (mkmReqTimoutable(mkmStockFileEndpoint, "GET", (url, method) =>
+      mkm.request(url, method, null, null, true))) {
+      val jsonWithCsv = mkm.responseContent
+      // returns product xml within result
+      // BUT: works only with < 19800 offers, returns 404 with more / or maybe there are specific cards that cause this...
+
+      val csv = getCsvLines(jsonWithCsv)
+      refreshLookupIfNeeded(mkm, csv)
+      return Some(buildNewCsv(csv).mkString("\n"))
+    }
+    None
+  }
+
+  def loadMkmStock(): String = {
+    val mkm = getMkm
+    // returns csv
+    /*
+    Tue Nov 05 12:44:35 UTC 2019 > Requesting GET https://api.cardmarket.com/ws/v2.0/output.json/stock/file
+    Tue Nov 05 12:44:35 UTC 2019 > Response Code is 200
+    Tue Nov 05 12:44:35 UTC 2019 > Requesting GET https://api.cardmarket.com/ws/v2.0/stock
+    Tue Nov 05 12:44:35 UTC 2019 > Response Code is 404
+     */
+    getCsvWithProductInfo(mkm) match {
+      case Some(x) => return x
+      case _ => ()
+    }
+
+    var text = "Error:" + mkmStockFileEndpoint + " had server response: " + mkm.responseCode + " "
+    if (mkm.lastError != null) {
+      text += mkm.lastError.toString
+    }
+    output.setValue(text)
+    sys.error(text)
+  }
+
+  def getXmlStock(start: Int = 1): String = {
+    val mkm = getMkm
+
+    if (mkmReqTimoutable(mkmStockEndpoint + "/" + start, "GET", (url, method) =>
+      mkm.request(url, method, null, null, true))) {
+      val part = mkm.responseContent
+      if (getXml(part).getFirstChild.getChildNodes.getLength == 100) {
+
+        part + getXmlStock(start + 100)
+      } else {
+        part
+      }
+    } else {
+      sys.error("request returned false, last error: " + mkm.lastError)
+    }
+  }
+
+  val splitter = "\";\""
+
+  def buildNewCsv(csv: Array[String]): Array[String] = {
     val csvWithCol = csv.map { line =>
-      val splitter = "\";\""
       val parts = line.split(splitter)
-      val idArt = parts.head.substring(1)
+      val idProduct = parts(1)
       /*
           0;          1;             2;           3;     4;          5;      6; ...
 "idArticle";"idProduct";"English Name";"Local Name";"Exp.";"Exp. Name";"Price";"Language";"Condition";"Foil?";"Signed?";"Playset?";"Altered?";"Comments";"Amount";"onSale";"Collector Number"
 "561339329";"399979";"Murderous Rider // Swift End";"Murderous Rider // Swift End";"ELD";"Throne of Eldraine";"22.00";"1";"NM";"";"";"";"";"";"1";"1";"97"
            */
       val partsReplaced = parts.zipWithIndex.map { case (x, i) =>
-        if (idArt == "idArticle") {
+        if (idProduct == "idProduct") {
           x // header unchanged
         } else {
           if (i == 4) { // exp code to empty
@@ -548,13 +624,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         }
       }
       val result = partsReplaced.mkString(splitter)
-      if (idArt == "idArticle")
+      if (idProduct == "idProduct")
         result + ";\"collectorNumber\""
       else
-        result + idArticleToCollectorNumber.get(idArt).map(x => ";\"" + x + "\"").getOrElse("")
+        result + idArticleToCollectorNumber.get(idProduct).map(x => ";\"" + x + "\"").getOrElse(";\"\"")
     }
 
-    return csvWithCol.mkString("\n")
+    csvWithCol
   }
 
   def getMkm: M11DedicatedApp = {

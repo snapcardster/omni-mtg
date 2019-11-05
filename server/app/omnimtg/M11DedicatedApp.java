@@ -93,7 +93,7 @@ public class M11DedicatedApp {
 
             _debug("Requesting " + method + " " + requestURL);
 
-            String realm = requestURL;
+            String realm = requestURL; //.split("\\?")[0];
             String oauth_version = "1.0";
             String oauth_consumer_key = _mkmAppToken;
             String oauth_token = _mkmAccessToken;
