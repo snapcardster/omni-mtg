@@ -34,8 +34,9 @@ class ProductLookup {
     app.setDebug(true)
     val m = new MainController(JavaFXPropertyFactory, new DesktopFunctionProvider)
 
-    val xml2 = m.getCsvWithProductInfo(app).getOrElse("")
-
-    println("RES:" + xml2 + ", len: " + xml2.length)
+    val xml2 = m.getProductsCsv(app)
+    //    val xml2 = m.getCsvWithProductInfo(app).getOrElse("")
+    //xml2.get.mkString("\n")
+    println("RES:" + "TODO" + ", len: " + xml2.get.size)
   }
 }

@@ -17,6 +17,8 @@ case class Token(token: String)
 
 case class MKMSomething(stock: String)
 
+case class MKMProductsfile(productsfile: String)
+
 case class SellerDataChanged(
                               `type`: String,
                               externalId: Long,

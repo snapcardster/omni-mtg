@@ -50,6 +50,11 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
   val mkmProductEndpoint: String = mkmBaseUrl + "/products"
   val mkmStockFileEndpoint: String = mkmBaseUrl + "/output.json/stock/file"
+  val mkmProductFileEndpoint: String = mkmBaseUrl + "/output.json/productlist"
+
+  def mkmProductExpansionEndpoint(idGame: String = "1"): String =
+    mkmBaseUrl + "/output.json/games/" + idGame + "/expansions"
+
 
   private var thread: Thread = null
   private val prop: Properties = new Properties
@@ -460,14 +465,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     snapUser.getValue + "," + snapToken.getValue
   }
 
-  def getCsvLines(mkmResponse: String): Array[String] = {
-    val builder = new GsonBuilder
-    val obj = new Gson().fromJson(mkmResponse, classOf[MKMSomething])
-    //      System.out.println(obj.toString)
-    val result = obj.stock
-
-    // get string content from base64'd gzip
-    val arr: Array[Byte] = nativeProvider.decodeBase64(result)
+  def unzipB64StringAndGetLines(b64: String): Array[String] = {
+    val arr: Array[Byte] = nativeProvider.decodeBase64(b64)
     val asd: ByteArrayInputStream = new ByteArrayInputStream(arr)
     val gz: GZIPInputStream = new GZIPInputStream(asd)
     val rd: BufferedReader = new BufferedReader(new InputStreamReader(gz))
@@ -483,6 +482,16 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       }
     }
     content.toArray(new Array[String](content.size))
+  }
+
+  def getCsvLines(mkmResponse: String): Array[String] = {
+    val builder = new GsonBuilder
+    val obj = new Gson().fromJson(mkmResponse, classOf[MKMSomething])
+    //      System.out.println(obj.toString)
+    val result = obj.stock
+
+    // get string content from base64'd gzip
+    unzipB64StringAndGetLines(result)
   }
 
   var idArticleToCollectorNumber: mutable.Map[String, String] = new mutable.HashMap[String, String]
@@ -580,6 +589,30 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
     output.setValue(text)
     sys.error(text)
+  }
+
+  def getProductsCsv(mkm: M11DedicatedApp): Option[Array[String]] = {
+
+    if (mkmReqTimoutable(mkmProductExpansionEndpoint(), "GET", (url, method) =>
+      mkm.request(url, method, null, null, true))) {
+
+      val editions = mkm.responseContent
+      println("editions" + editions)
+
+      if (mkmReqTimoutable(mkmProductFileEndpoint, "GET", (url, method) =>
+        mkm.request(url, method, null, null, true))) {
+        val productJson = mkm.responseContent
+        //println(productJson)
+
+        val builder = new GsonBuilder
+        val obj = new Gson().fromJson(productJson, classOf[MKMProductsfile])
+        //      System.out.println(obj.toString)
+        val result = obj.productsfile
+
+        return Some(unzipB64StringAndGetLines(result).filter(x => x.contains("Magic Single")))
+      }
+    }
+    None
   }
 
   def getXmlStock(start: Int = 1): String = {
