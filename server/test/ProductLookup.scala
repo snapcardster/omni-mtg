@@ -50,9 +50,14 @@ class ProductLookup {
 
     return ()*/
 
-    val xml2 = m.getAmbigousProductIds(app)
+    //val xml2 = m.getAmbigousProductIds(app)
     //    val xml2 = m.getCsvWithProductInfo(app).getOrElse("")
     //xml2.get.mkString("\n")
-    println("RES:" + xml2.get.mkString("\n") + ", len: " + xml2.get.size)
+    //println("RES:" + xml2.get.mkString("\n") + ", len: " + xml2.get.size)
+
+    m.ambiguousProductIdLookup = m.getAmbigousProductIds(app)
+    val csvWithCol = m.getCsvWithProductInfo(app)
+    println("csvWithCol:" + csvWithCol)
+
   }
 }
