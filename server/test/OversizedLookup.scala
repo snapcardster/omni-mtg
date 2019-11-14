@@ -10,8 +10,10 @@ import omnimtg.{DesktopFunctionProvider, _}
 import org.junit.Test
 import org.w3c.dom.{Document, Node, NodeList}
 
+import scala.collection.mutable
+
 // @RunWith(BlockJUnit4ClassRunner.getClass)
-class ProductLookup {
+class OversizedLookup {
   def main(args: Array[String]): Unit = {}
 
   @Test
@@ -54,10 +56,50 @@ class ProductLookup {
     //    val xml2 = m.getCsvWithProductInfo(app).getOrElse("")
     //xml2.get.mkString("\n")
     //println("RES:" + xml2.get.mkString("\n") + ", len: " + xml2.get.size)
+    m.ambiguousProductIdLookup = m.getAmbigousProductIds(app)
+    val csvWithCol = m.getCsvWithProductInfo(app)
 
-    //    m.ambiguousProductIdLookup = m.getAmbigousProductIds(app)
-    val csvWithCol = m.loadMkmStock(app)
     println("csvWithCol:" + csvWithCol)
 
+    /**/
+    // app.request(m.mkmBaseUrl + "/metaproductlist", "GET", null, null, true);
+
+
+    /*app.request(m.mkmProductEndpoint + "/" + 293925, "GET", null, null, true);
+    val xmlDOC = m.getXml(app.responseContent)
+    val x = m.xmlList(xmlDOC.getFirstChild.getChildNodes)
+    val y = x.find(x => x.getNodeName == "product")
+    println(y)*/
+
+/*
+    app.request(m.mkmProductFileEndpoint, "GET", null, null, true);
+    val productJson = app.responseContent
+    //println(productJson)
+
+    val obj = new Gson().fromJson(productJson, classOf[MKMProductsfile])
+    //      System.out.println(obj.toString)
+    val result = obj.productsfile
+    //          0,     1,            2,         3,             4,            5            6
+    //"idProduct","Name","Category ID","Category","Expansion ID","Metacard ID","Date Added"
+    //"1","Altar's Light","1","Magic Single","45","129","2007-01-01 00:00:00"
+    val strings = m.unzipB64StringAndGetLines(result)
+    val lines = strings.zipWithIndex.flatMap { case (x, i) =>
+      if (i == 0 || x.contains("Magic Single")) {
+        /*val parts = x.split("\",\"")
+        val enName = parts(1)
+        val idExpansion = parts(4).toLong
+        Some(MKMProductEntry(
+          idProduct = parts(0).substring(1).toLong,
+          enName = enName,
+          idExpansion = idExpansion,
+          expansionName = ""
+        ))*/
+        Some(x)
+      }
+      else {
+        None
+      }
+    }
+    println(lines.mkString("\n"))*/
   }
 }

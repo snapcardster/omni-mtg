@@ -28,6 +28,12 @@ case class MKMProductEntry(
                             idExpansion: Long, expansionName: String
                           )
 
+case class ScryfallList(
+                         data: Array[ScryfallCard]
+                       )
+
+case class ScryfallCard(name: String)
+
 case class SellerDataChanged(
                               `type`: String,
                               externalId: Long,

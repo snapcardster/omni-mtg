@@ -12,6 +12,7 @@ import com.google.gson._
 import javax.xml.parsers.DocumentBuilderFactory
 
 import scala.collection.mutable
+import scala.io.Source
 import scala.util.Try
 // import org.apache.commons.lang3.StringUtils
 import org.w3c.dom.{Document, Node, NodeList}
@@ -21,6 +22,7 @@ import scala.collection.mutable.ListBuffer
 case class LogItem(timestamp: Long, text: String, deleted: List[String], changed: List[String], added: List[String])
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
+
   def println(x: Any): Unit = {
     nativeProvider.println(x)
   }
@@ -264,7 +266,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     //if (backupFirst) {
     // Create a local backup of the MKM Stock
     output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
-    var csv = loadMkmStock()
+    var csv = loadMkmStock(getMkm)
     val bFile = s"backup_${System.currentTimeMillis}.csv"
     val saveBackupPath = new File(File.separatorChar + "backup" + File.separatorChar + bFile) //Paths.get("backup", bFile).toFile
     try {
@@ -285,7 +287,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val res1 = loadSnapChangedAndDeleteFromStock(sb)
 
     sb.append("Loading MKM stock...\n")
-    csv = loadMkmStock()
+    csv = loadMkmStock(getMkm)
     sb.append("  " + csv.count(x => x == '\n') + " lines read from mkm stock\n")
     output.setValue(sb.toString)
 
@@ -572,8 +574,16 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   var ambiguousProductIdLookup: Option[Map[Long, Seq[String]]] = None
 
-  def loadMkmStock(): String = {
-    val mkm = getMkm
+  var oversizedNames: Set[String] = Set.empty
+  var oversizedNamesAge: Long = 0
+
+  def loadMkmStock(mkm: M11DedicatedApp): String = {
+
+    oversizedNamesAge += 1
+    if (oversizedNamesAge > 100 || oversizedNames.isEmpty) {
+      oversizedNames = getOversizedCardNames.toSet
+      oversizedNamesAge = 0
+    }
     // returns csv
     /*
     Tue Nov 05 12:44:35 UTC 2019 > Requesting GET https://api.cardmarket.com/ws/v2.0/output.json/stock/file
@@ -663,6 +673,11 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
                 seq.map(_._1).map(x => x -> seq.map(_._2).distinct)
             }
           }.toMap
+        /*
+        TODO: FOR TESTS
+        return Some(
+          cardNameToSets.values.flatMap(_.map(x => x.idProduct -> List(x.expansionName))).toMap)
+        */
         return Some(idProductToExpansions)
       }
     }
@@ -689,9 +704,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   val splitter = "\";\""
 
   def buildNewCsv(csv: Array[String]): Array[String] = {
-    val csvWithCol = csv.map { line =>
+    val csvWithCol = csv.flatMap { line =>
       val parts = line.split(splitter)
       val idProduct = parts(1)
+      val cardName = parts(2)
       /*
           0;          1;             2;           3;     4;          5;      6; ...
 "idArticle";"idProduct";"English Name";"Local Name";"Exp.";"Exp. Name";"Price";"Language";"Condition";"Foil?";"Signed?";"Playset?";"Altered?";"Comments";"Amount";"onSale";"Collector Number"
@@ -711,10 +727,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         }
       }
       val result = partsReplaced.mkString(splitter)
-      if (idProduct == "idProduct")
-        result + ";\"collectorNumber\""
+      if (oversizedNames.contains(cardName)) {
+        None
+      } else if (idProduct == "idProduct")
+        Some(result + ";\"collectorNumber\"")
       else
-        result + idProductToCollectorNumber.get(idProduct.toLong).map(x => ";\"" + x + "\"").getOrElse(";\"\"")
+        Some(result + idProductToCollectorNumber.get(idProduct.toLong).map(x => ";\"" + x + "\"").getOrElse(";\"\""))
     }
 
     csvWithCol
@@ -960,6 +978,28 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         Array()
       }
     (xmlItems ++ needToRemove).toArray
+  }
+
+  def getOversizedCardNames: Array[String] = {
+    val apiQuery =
+      "https://api.scryfall.com/cards/search?q=is%3Aoversized+t%3ALegend+include%3Aextras"
+    val source = Source.fromURL(apiQuery)
+    val res = source.mkString
+    source.close()
+    val obj: ScryfallList = new Gson().fromJson(res, classOf[ScryfallList])
+    //      System.out.println(obj.toString)
+    val result = obj.data
+    println("getOversizedCardNames (scryfall): " + result.length)
+    result.map(x => x.name)
+
+    /*val q = "https://scryfall.com/search?q=is%3Aoversized+t%3Alegend&unique=cards&as=checklist"
+    val source = Source.fromURL(q)
+    val html = source.mkString
+    source.close()
+    val x =
+      html.split("\n").filter(_.contains("<td class=\"ellipsis\"><a href=\""))
+    val names = x.map(x => getXml(x).getFirstChild.getFirstChild.getTextContent)
+    names*/
   }
 
   override def getThread: Thread = thread
