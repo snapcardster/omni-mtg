@@ -76,13 +76,15 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
   }
 
   override def saveToFile(path: String, contents: String, nativeBase: scala.Any): Throwable = {
-    val writer = new PrintWriter(path)
+    var writer: PrintWriter = null
     try {
+      writer = new PrintWriter(path)
       writer.write(contents)
     } catch {
       case e: Exception => return e
     } finally {
-      writer.close()
+      if (writer != null)
+        writer.close()
     }
     null
   }

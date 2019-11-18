@@ -24,10 +24,13 @@ case class LogItem(timestamp: Long, text: String, deleted: List[String], changed
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
 
   def println(x: Any): Unit = {
-    nativeProvider.println(x)
+    nativeProvider.println(x match {
+      case x: Throwable => x.toString + "[" + x.getStackTrace.take(5).mkString(", ") + "]"
+      case x => x
+    })
   }
 
-  val title: String = "Omni MTG Sync Tool 2019-05-29 [H]"
+  val title: String = "Omni MTG Sync Tool 2019-11-18 [H]"
 
   // when scryfall deployed: 3, before: 2
   val snapApiVersion: String = "3"
@@ -232,7 +235,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
                 inSync.setValue(false)
             }
             request.getValue match {
-              case r: Runnable => r.run
+              case r: Runnable => r.run()
               case null => () // ok, runnable or nothing
               case x => println("request was " + x + ", expected Runnable")
             }
@@ -394,7 +397,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     output.setValue(info.toString)
 
-    val resAdd = addToMkmStock(addedItems)
+    val resAdd = addToMkmStock(addedItems, getMkm)
     info.append("  " + resAdd + "\n")
     output.setValue(info.toString)
 
@@ -786,11 +789,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
   }
 
-  def addToMkmStock(entries: Seq[SellerDataChanged]): String = {
+  def addToMkmStock(entries: Seq[SellerDataChanged], mkm: M11DedicatedApp): String = {
     if (entries.isEmpty)
       return ""
-
-    val mkm = getMkm
 
     val body = // NO SPACE at beginning, this is important
       s"""<?xml version="1.0" encoding="utf-8"?>
@@ -896,7 +897,11 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def getConfirmation(xml: String, tagName: String, entriesInRequest: Seq[SellerDataChanged], added: Boolean): String = {
-    new Gson().toJson(getConfirmationRaw(xml, tagName, entriesInRequest, added))
+    val confirmations = getConfirmationRaw(xml, tagName, entriesInRequest, added)
+    /*if (Config.isVerbose) {
+      println("confirmation xml: " + xml + "=>" + confirmations)
+    }*/
+    new Gson().toJson(confirmations)
   }
 
   def getConfirmationRaw(xml: String, tagName: String, entriesInRequest: Seq[SellerDataChanged], added: Boolean): Array[ImportConfirmation] = {
