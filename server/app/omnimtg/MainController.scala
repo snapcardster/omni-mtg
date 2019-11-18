@@ -433,7 +433,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       new Gson().fromJson(json, classOf[Array[SellerDataChanged]])
     } catch {
       case x: Throwable =>
-        sys.error(x.toString + "\n" + json)
+        sys.error("getChangeItems: " + x.toString + "\n" + json)
     }
   }
 

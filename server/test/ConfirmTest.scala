@@ -17,17 +17,29 @@ class ConfirmTest {
     assert(file.exists)
     properties.load(new FileReader(file))
 
+    val (mkmApp, mkmAppSecret, mkmAccessToken, mkmAccessTokenSecret) =
+      (properties.getProperty("mkmApp"),
+        properties.getProperty("mkmAppSecret"),
+        properties.getProperty("mkmAccessToken"),
+        properties.getProperty("mkmAccessTokenSecret")
+      )
+    val m = new MainController(JavaFXPropertyFactory, new DesktopFunctionProvider)
+    m.getMkmAccessToken.setValue(mkmApp)
+    m.getMkmAccessToken.setValue(mkmAppSecret)
+    m.getMkmAccessToken.setValue(mkmAccessToken)
+    m.getMkmAccessToken.setValue(mkmAccessTokenSecret)
+
     val app = new M11DedicatedApp(
-      properties.getProperty("mkmApp"),
-      properties.getProperty("mkmAppSecret"),
-      properties.getProperty("mkmAccessToken"),
-      properties.getProperty("mkmAccessTokenSecret"),
+      mkmApp, mkmAppSecret, mkmAccessToken, mkmAccessTokenSecret,
       new DesktopFunctionProvider
     )
 
-    app.setDebug(true)
-    val m = new MainController(JavaFXPropertyFactory, new DesktopFunctionProvider)
+    m.getSnapUser.setValue(properties.getProperty("snapUser"))
+    m.getSnapToken.setValue(properties.getProperty("snapToken"))
 
+    m.snapBaseUrl = "https://dev.snapcardster.com"
+
+    app.setDebug(true)
 
     val id = 242476
     val addedItems = List(SellerDataChanged(m.REMOVED, 0, 0, CsvFormat(
@@ -38,16 +50,17 @@ class ConfirmTest {
 
     Config.setVerbose(true)
 
-    val resAdd = m.addToMkmStock(addedItems, app)
+    m.loadSnapChangedAndDeleteFromStock(new StringBuilder)
 
+    /*
     println(resAdd)
 
-    val auth = properties.getProperty("snapUser") + "," + properties.getProperty("snapToken")
-    val body = if (resAdd.isEmpty) "[]" else resAdd
-    val res = m.snapConnector.call(m.snapChangedEndpoint, "POST", auth, body)
+  val auth = properties.getProperty("snapUser") + "," + properties.getProperty("snapToken")
+  val body = if (resAdd.isEmpty) "[]" else resAdd
+  val res = m.snapConnector.call(m.snapChangedEndpoint, "POST", auth, body)
 
-    println(res)
-
+  println(res)
+    */
 
   }
 }

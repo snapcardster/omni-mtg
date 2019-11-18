@@ -11,7 +11,7 @@ class SnapConnector(func: NativeFunctionProvider) {
     val timeout = TimeoutWatcher(timeoutMs, () =>
       callCore(requestURL, method, auth, body)
     )
-    timeout.run.getOrElse(
+    timeout.run().getOrElse(
       sys.error("Timeout: " + method + " " + requestURL + " did not complete within " + timeoutMs + "ms\nInner: " + timeout.exception)
     )
   }
@@ -49,7 +49,7 @@ class SnapConnector(func: NativeFunctionProvider) {
     connection.setConnectTimeout(timeoutMs)
     connection.setReadTimeout(timeoutMs)
     func.println("connect to snapcardster, timeouts (conn/read) " + timeoutMs + " ms...")
-    connection.connect
+    connection.connect()
 
     val lastCode = connection.getResponseCode
     func.println(requestURL + " response code:" + lastCode)
