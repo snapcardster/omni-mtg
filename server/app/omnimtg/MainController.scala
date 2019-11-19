@@ -797,7 +797,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       s"""<?xml version="1.0" encoding="utf-8"?>
       <request>
       ${
-        entries.map { entry =>
+        entries.flatMap { entry =>
           // only insert ist supported right now, not update
           //val extIdInfo = ""
           // id.externalId match {
@@ -810,28 +810,29 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
           val info = entry.info
           val csvLine = info.meta.replace("\"", "").split(";")
           // TODO: Apache CSV?
-          val prodId = csvLine(1)
-          val engName = csvLine(2)
-          val localName = csvLine(3)
-          val exp = csvLine(4)
-          val expName = csvLine(5)
-          val price = csvLine(6)
-          val language = csvLine(7)
-          val condition = csvLine(8)
-          val foil = isTrue(csvLine(9))
-          val signed = isTrue(csvLine(10))
-          val playset = isTrue(csvLine(11))
-          val altered = isTrue(csvLine(12))
-          val comment = csvLine(13)
-          val amount = csvLine(14)
-          val onSale = csvLine(15)
+          if (csvLine.length >= 14) {
+            val prodId = csvLine(1)
+            //val engName = csvLine(2)
+            //val localName = csvLine(3)
+            //val exp = csvLine(4)
+            //val expName = csvLine(5)
+            val price = csvLine(6)
+            val language = csvLine(7)
+            val condition = csvLine(8)
+            val foil = isTrue(csvLine(9))
+            val signed = isTrue(csvLine(10))
+            //val playset = isTrue(csvLine(11))
+            val altered = isTrue(csvLine(12))
+            val comment = csvLine(13)
+            //val amount = csvLine(14)
+            //val onSale = csvLine(15)
 
-          // Example:
-          // "idArticle";"idProduct";"English Name";"Local Name";"Exp.";"Exp. Name";"Price";"Language";"Condition";"Foil?";"Signed?";"Playset?";"Altered?";"Comments";"Amount";"onSale"
-          // "353185336";"294560";"Quicksmith Rebel";"Quicksmith Rebel";"AER";"Aether Revolt";"333.00";"1";"NM";"";"";"";"";"";"1";"1"
+            // Example:
+            // "idArticle";"idProduct";"English Name";"Local Name";"Exp.";"Exp. Name";"Price";"Language";"Condition";"Foil?";"Signed?";"Playset?";"Altered?";"Comments";"Amount";"onSale"
+            // "353185336";"294560";"Quicksmith Rebel";"Quicksmith Rebel";"AER";"Aether Revolt";"333.00";"1";"NM";"";"";"";"";"";"1";"1"
 
-          // For post, all information must be present as well as count=1
-          s"""
+            // For post, all information must be present as well as count=1
+            Some(s"""
              <article>
                <idProduct>$prodId</idProduct>
                <condition>$condition</condition>
@@ -844,7 +845,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
                <comments>$comment</comments>
                <count>1</count>
              </article>
-            """
+            """)
+          } else {
+            None
+          }
         }.mkString("")
       }
       </request>

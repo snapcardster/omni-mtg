@@ -24,10 +24,10 @@ class ConfirmTest {
         properties.getProperty("mkmAccessTokenSecret")
       )
     val m = new MainController(JavaFXPropertyFactory, new DesktopFunctionProvider)
-    m.getMkmAccessToken.setValue(mkmApp)
-    m.getMkmAccessToken.setValue(mkmAppSecret)
+    m.getMkmAppToken.setValue(mkmApp)
+    m.getMkmAppSecret.setValue(mkmAppSecret)
     m.getMkmAccessToken.setValue(mkmAccessToken)
-    m.getMkmAccessToken.setValue(mkmAccessTokenSecret)
+    m.getMkmAccessTokenSecret.setValue(mkmAccessTokenSecret)
 
     val app = new M11DedicatedApp(
       mkmApp, mkmAppSecret, mkmAccessToken, mkmAccessTokenSecret,
@@ -50,8 +50,16 @@ class ConfirmTest {
 
     Config.setVerbose(true)
 
-    m.loadSnapChangedAndDeleteFromStock(new StringBuilder)
+    // m.loadSnapChangedAndDeleteFromStock(new StringBuilder)
 
+    val csv = m.loadMkmStock(app)
+
+    val res = m.postToSnap(csv)
+
+    // output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
+    println("res has a length of " + res.length)
+    val items = m.getChangeItems(res)
+    println(items.toList)
     /*
     println(resAdd)
 

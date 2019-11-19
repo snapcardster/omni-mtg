@@ -17,6 +17,23 @@ case class Token(token: String)
 
 case class MKMSomething(stock: String)
 
+case class MKMProductsfile(productsfile: String)
+
+case class MKMExpansions(expansion: Array[MKMExpansion])
+
+case class MKMExpansion(idExpansion: Long, enName: String)
+
+case class MKMProductEntry(
+                            idProduct: Long, enName: String,
+                            idExpansion: Long, expansionName: String
+                          )
+
+case class ScryfallList(
+                         data: Array[ScryfallCard]
+                       )
+
+case class ScryfallCard(name: String)
+
 case class SellerDataChanged(
                               `type`: String,
                               externalId: Long,
