@@ -48,6 +48,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   def snapCsvEndpoint: String = snapBaseUrl + s"/importer/sellerdata/from/csv/$snapApiVersion"
 
+  def snapCsvBidEndpoint: String = snapBaseUrl + s"/importer/sellerdata/bidsFromCsv/$snapApiVersion"
+
   def snapLoginEndpoint: String = snapBaseUrl + "/auth"
 
   def snapChangedEndpoint: String = snapBaseUrl + s"/marketplace/sellerdata/changed/$snapApiVersion"
@@ -74,6 +76,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   private val mkmAccessToken: StringProperty = propFactory.newStringProperty("mkmAccessToken", "", prop)
   private val mkmAccessTokenSecret: StringProperty = propFactory.newStringProperty("mkmAccessTokenSecret", "", prop)
   private val snapUser: StringProperty = propFactory.newStringProperty("snapUser", "", prop)
+  private val multiplier: DoubleProperty = propFactory.newDoubleProperty("multiplier", 0.0, prop)
+
   private val snapPassword: StringProperty = propFactory.newStringProperty("snapPassword", "", prop)
   private val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
   private val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
@@ -309,6 +313,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     sb.append("• MKM to Snapcardster, changes at Snapcardster:\n" + info)
     output.setValue(sb.toString)
 
+    postToSnapBids(csv)
+
     addLogEntry
   }
 
@@ -456,8 +462,26 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
   }
 
+  def postToSnapBids(csv: String): String = {
+    val db: java.lang.Double = multiplier.getValue
+    if (db != 0.0) {
+      try {
+        val body = new Gson().toJson(MKMCsv("mkmStock.csv", csv, Double.unbox(db)))
+        // println("postbids: " + body)
+        val res = snapConnector.call(snapCsvBidEndpoint, "POST", getAuth, body)
+        res
+      } catch {
+        case e: Throwable =>
+          handleEx(e, "postToSnapBids with mult " + db)
+          ""
+      }
+    } else {
+      ""
+    }
+  }
+
   def postToSnap(csv: String): String = {
-    val body = new Gson().toJson(MKMCsv("mkmStock.csv", csv))
+    val body = new Gson().toJson(MKMCsv("mkmStock.csv", csv, 1))
     val res = snapConnector.call(snapCsvEndpoint, "POST", getAuth, body)
     res
   }
@@ -832,7 +856,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
             // "353185336";"294560";"Quicksmith Rebel";"Quicksmith Rebel";"AER";"Aether Revolt";"333.00";"1";"NM";"";"";"";"";"";"1";"1"
 
             // For post, all information must be present as well as count=1
-            Some(s"""
+            Some(
+              s"""
              <article>
                <idProduct>$prodId</idProduct>
                <condition>$condition</condition>
@@ -1034,6 +1059,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   override def getSnapToken: StringProperty = snapToken
 
   override def getOutput: StringProperty = output
+
+  override def getMultiplier: DoubleProperty = multiplier
 
   override def getInterval: IntegerProperty = interval
 

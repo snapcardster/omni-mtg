@@ -13,5 +13,7 @@ public interface PropertyFactory {
 
     IntegerProperty newIntegerProperty(String name, Integer initialValue, Properties prop);
 
+    DoubleProperty newDoubleProperty(String name, Double initialValue, Properties prop);
+
     ObjectProperty newObjectProperty(Object value);
 }

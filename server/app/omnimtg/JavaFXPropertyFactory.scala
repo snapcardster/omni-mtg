@@ -27,6 +27,9 @@ object JavaFXPropertyFactory extends omnimtg.Interfaces.PropertyFactory {
 
   override def newIntegerProperty(name: String, initialValue: Integer, prop: Properties) = new JavaFXIntegerProperty(initialValue)
 
+  override def newDoubleProperty(name: String, initialValue: java.lang.Double, prop: Properties) = new JavaFxDoubleProperty(initialValue)
+
+
   override def newObjectProperty(initialValue: Object) = new JavaFXObjectProperty(initialValue)
 }
 
@@ -63,6 +66,25 @@ class JavaFXStringProperty extends omnimtg.Interfaces.StringProperty {
 
   override def setValue(value: String, callListener: lang.Boolean): Unit = nativeBase.setValue(value)
 }
+
+
+class JavaFxDoubleProperty extends omnimtg.Interfaces.DoubleProperty {
+  var nativeBase: SimpleDoubleProperty = _
+
+  def this(value: java.lang.Double) {
+    this()
+    this.nativeBase = new SimpleDoubleProperty(value)
+  }
+
+  override def setValue(value: java.lang.Double): Unit = nativeBase.set(value)
+
+  override def getValue: java.lang.Double = nativeBase.getValue
+
+  override def getNativeBase: SimpleDoubleProperty = nativeBase
+
+  override def addListener(listener: Any): Unit = ()
+}
+
 
 class JavaFXIntegerProperty extends omnimtg.Interfaces.IntegerProperty {
   var nativeBase: SimpleIntegerProperty = _

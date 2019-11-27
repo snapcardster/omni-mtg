@@ -41,7 +41,7 @@ case class SellerDataChanged(
                               info: CsvFormat
                             )
 
-case class MKMCsv(fileName: String, fileContent: String)
+case class MKMCsv(fileName: String, fileContent: String, priceMultiplier: Double)
 
 case class ImportConfirmation(collectionId: Long, successful: Boolean, added: Boolean, info: String)
 

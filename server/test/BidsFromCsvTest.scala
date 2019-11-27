@@ -2,10 +2,10 @@ import java.io.{File, FileReader}
 import java.util.Properties
 
 import omnimtg.{Condition, Config, CsvFormat, DesktopFunctionProvider, JavaFXPropertyFactory, Language, M11DedicatedApp, MainController, SellerDataChanged}
-import org.junit.Test
+import org.junit.{Assert, Test}
 
 // @RunWith(BlockJUnit4ClassRunner.getClass)
-class ConfirmTest {
+class BidsFromCsvTest {
   def main(args: Array[String]): Unit = {}
 
   @Test
@@ -37,37 +37,28 @@ class ConfirmTest {
     m.getSnapUser.setValue(properties.getProperty("snapUser"))
     m.getSnapToken.setValue(properties.getProperty("snapToken"))
 
-    m.snapBaseUrl = "https://api.snapcardster.com"
+    m.snapBaseUrl = "https://dev.snapcardster.com"
 
     app.setDebug(true)
 
-    val id = 242476
-    val addedItems = List(SellerDataChanged(m.REMOVED, 0, 0, CsvFormat(
-      0, "", "", false, Condition("", "", 0, ""), Language("", "", 0),
-      "\"572041706\";\"" + id + "\";\"Kozilek's Return\";\"Kozilek's Return\";\"\";\"Oath of the Gatewatch\";\"122.00\";\"1\";\"NM\";\"\";\"\";\"\";\"\";\"\";\"1\";\"1\";\"\"",
-      0, "", false, false, 0.0, 0, 0
-    )))
 
     Config.setVerbose(true)
 
     // m.loadSnapChangedAndDeleteFromStock(new StringBuilder)
 
-    //val csv = m.loadMkmStock(app)
+    val csv = m.loadMkmStock(app)
 
-    //val res = m.postToSnap(csv)
+    var items = m.postToSnapBids(csv)
+    Assert.assertEquals("", items)
 
-    // output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
-   // println("res has a length of " + res.length)
-    val items = m.loadChangedFromSnap()
-    println(items)
+    m.getMultiplier.setValue(0.5)
+    items = m.postToSnapBids(csv)
+
+    Assert.assertNotEquals("", items)
     /*
-    println(resAdd)
-
-  val auth = properties.getProperty("snapUser") + "," + properties.getProperty("snapToken")
-  val body = if (resAdd.isEmpty) "[]" else resAdd
-  val res = m.snapConnector.call(m.snapChangedEndpoint, "POST", auth, body)
-
-  println(res)
+    OK:
+    https://dev.snapcardster.com/importer/sellerdata/bidsFromCsv/3 response code:200
+    {"imported":[],"errors":[],"nonMain":[0,2,0],"deferred":false}
     */
 
   }

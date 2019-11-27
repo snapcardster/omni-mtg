@@ -34,6 +34,8 @@ public interface MainControllerInterface {
 
     StringProperty getOutput();
 
+    DoubleProperty getMultiplier();
+
     IntegerProperty getInterval();
 
     IntegerProperty getNextSync();

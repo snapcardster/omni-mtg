@@ -16,7 +16,7 @@ object JsStatus {
   implicit val w: Writes[JsStatus] = Json.writes[JsStatus]
 }
 
-case class JsSettings(enabled: Boolean, intervalInSec: Int)
+case class JsSettings(enabled: Boolean, intervalInSec: Int, multiplier: Double)
 
 object JsSettings {
   implicit val r: Reads[JsSettings] = Json.reads[JsSettings]
@@ -50,7 +50,10 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   }
 
   def getSettings: Action[AnyContent] = Action.async {
-    Future(Ok(Json.toJson(JsSettings(enabled = mc.getRunning.getValue, intervalInSec = mc.getInterval.getValue))))
+    Future(Ok(Json.toJson(JsSettings(
+      enabled = mc.getRunning.getValue,
+      intervalInSec = mc.getInterval.getValue,
+      multiplier = mc.getMultiplier.getValue))))
   }
 
   def getLogs: Action[AnyContent] = Action.async {
@@ -79,6 +82,8 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   def postSettings: Action[AnyContent] = Action.async { req =>
     parseJs(req, JsSettings.r) { x: JsSettings =>
       mc.getInterval.setValue(x.intervalInSec)
+      mc.getMultiplier.setValue(x.multiplier)
+
       val old = mc.getRunning.getValue
       mc.getRunning.setValue(x.enabled)
       if (x.enabled && !old) {
