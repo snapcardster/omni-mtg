@@ -43,6 +43,13 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
     }
   }
 
+  def updateProp(str: String, property: DoubleProperty, prop: Properties): Unit = {
+    val value = prop.get(str)
+    if (value != null && value != "") {
+      property.setValue(java.lang.Double.parseDouble(String.valueOf(value)))
+    }
+  }
+
   override def readProperties(prop: Properties, controller: MainControllerInterface, nativeBase: Object): Throwable = {
     if (!configPath.toFile.exists) {
       configPath.toFile.createNewFile
@@ -59,6 +66,9 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
       updateProp("mkmAccessTokenSecret", controller.getMkmAccessTokenSecret, prop)
       updateProp("snapUser", controller.getSnapUser, prop)
       updateProp("snapToken", controller.getSnapToken, prop)
+      updateProp("multiplier", controller.getMultiplier, prop)
+      updateProp("minBidPrice", controller.getMinBidPrice, prop)
+      updateProp("maxBidPrice", controller.getMaxBidPrice, prop)
 
       if (prop.get("mkmAppToken") != null) {
         controller.getOutput.setValue("Stored authentication information restored")

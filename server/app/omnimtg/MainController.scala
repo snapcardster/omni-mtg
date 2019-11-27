@@ -13,7 +13,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 import scala.collection.mutable
 import scala.io.Source
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 // import org.apache.commons.lang3.StringUtils
 import org.w3c.dom.{Document, Node, NodeList}
 
@@ -77,6 +77,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   private val mkmAccessTokenSecret: StringProperty = propFactory.newStringProperty("mkmAccessTokenSecret", "", prop)
   private val snapUser: StringProperty = propFactory.newStringProperty("snapUser", "", prop)
   private val multiplier: DoubleProperty = propFactory.newDoubleProperty("multiplier", 0.0, prop)
+  private val minBidPrice: DoubleProperty = propFactory.newDoubleProperty("minBidPrice", 0.0, prop)
+  private val maxBidPrice: DoubleProperty = propFactory.newDoubleProperty("maxBidPrice", 0.0, prop)
 
   private val snapPassword: StringProperty = propFactory.newStringProperty("snapPassword", "", prop)
   private val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
@@ -382,10 +384,14 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     info.append(resDel + "\n")
     output.setValue(info.toString)
 
-    var body = if (resDel.isEmpty) "[]" else resDel
-    var res = snapConnector.call(snapChangedEndpoint, "POST", getAuth, body)
-    info.append("  " + res + "\n")
-    output.setValue(info.toString)
+    if (resDel.isSuccess) {
+      val body = if (resDel.get.isEmpty) "[]" else resDel.get
+      val res = snapConnector.call(snapChangedEndpoint, "POST", getAuth, body)
+      info.append("  " + res + "\n")
+      output.setValue(info.toString)
+    } else {
+      println("Error: deleteFromMkmStock => " + resDel.failed.get)
+    }
 
     val addedItems = list.flatMap { parts =>
       if (parts.`type` == ADDED || parts.`type` == CHANGED) {
@@ -410,8 +416,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     info.append("Notify snapcardster...\n")
     output.setValue(info.toString)
 
-    body = if (resAdd.isEmpty) "[]" else resAdd
-    res = snapConnector.call(snapChangedEndpoint, "POST", getAuth, body)
+    val body = if (resAdd.isEmpty) "[]" else resAdd
+    val res = snapConnector.call(snapChangedEndpoint, "POST", getAuth, body)
 
     info.append("  " + res + "\n")
     output.setValue(info.toString)
@@ -462,17 +468,34 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
   }
 
+  var lastBidCreateOptions: String = ""
+
   def postToSnapBids(csv: String): String = {
-    val db: java.lang.Double = multiplier.getValue
-    if (db != 0.0) {
+    val multiplierValue: Double = Double.unbox(multiplier.getValue)
+    val minBidPriceValue: Double = Double.unbox(minBidPrice.getValue)
+    val maxBidPriceValue: Double = Double.unbox(maxBidPrice.getValue)
+    if (multiplierValue != 0.0) {
       try {
-        val body = new Gson().toJson(MKMCsv("mkmStock.csv", csv, Double.unbox(db)))
+        val body = new Gson().toJson(MKMCsv(
+          "mkmStock.csv",
+          csv,
+          multiplierValue,
+          minBidPriceValue,
+          maxBidPriceValue
+        ))
         // println("postbids: " + body)
         val res = snapConnector.call(snapCsvBidEndpoint, "POST", getAuth, body)
+        val currentBidCreateOptions = "mult" + multiplierValue + ",min" + minBidPriceValue + ",max" + maxBidPriceValue
+
+        if (currentBidCreateOptions != lastBidCreateOptions) {
+          lastBidCreateOptions = currentBidCreateOptions
+          println("save in props: " + currentBidCreateOptions)
+          nativeProvider.save(prop, null)
+        }
         res
       } catch {
         case e: Throwable =>
-          handleEx(e, "postToSnapBids with mult " + db)
+          handleEx(e, "postToSnapBids with mult " + multiplierValue)
           ""
       }
     } else {
@@ -481,7 +504,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def postToSnap(csv: String): String = {
-    val body = new Gson().toJson(MKMCsv("mkmStock.csv", csv, 1))
+    val body = new Gson().toJson(MKMCsv("mkmStock.csv", csv, 1, 0.0, 0.0))
     val res = snapConnector.call(snapCsvEndpoint, "POST", getAuth, body)
     res
   }
@@ -771,15 +794,15 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     x
   }
 
-  def deleteFromMkmStock(entries: Seq[SellerDataChanged]): String = {
+  def deleteFromMkmStock(entries: Seq[SellerDataChanged]): Try[String] = {
     val buf = ListBuffer[ImportConfirmation]()
     for (seq <- entries.grouped(100)) {
       deleteFromMkmStockWindowedRaw(seq) match {
-        case Left(x) => return x
+        case Left(x) => return Failure(new IllegalStateException(x))
         case Right(res) => buf ++= res
       }
     }
-    new Gson().toJson(buf.toList.toArray)
+    Success(new Gson().toJson(buf.toList.toArray))
   }
 
   def deleteFromMkmStockWindowedRaw(entries: Seq[SellerDataChanged]): Either[String, Array[ImportConfirmation]] = {
@@ -1061,6 +1084,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   override def getOutput: StringProperty = output
 
   override def getMultiplier: DoubleProperty = multiplier
+
+  override def getMaxBidPrice: DoubleProperty = maxBidPrice
+
+  override def getMinBidPrice: DoubleProperty = minBidPrice
 
   override def getInterval: IntegerProperty = interval
 

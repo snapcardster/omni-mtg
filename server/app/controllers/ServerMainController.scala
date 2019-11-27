@@ -16,7 +16,13 @@ object JsStatus {
   implicit val w: Writes[JsStatus] = Json.writes[JsStatus]
 }
 
-case class JsSettings(enabled: Boolean, intervalInSec: Int, multiplier: Double)
+case class JsSettings(
+                       enabled: Boolean,
+                       intervalInSec: Int,
+                       multiplier: Double,
+                       maxBidPrice: Double,
+                       minBidPrice: Double
+                     )
 
 object JsSettings {
   implicit val r: Reads[JsSettings] = Json.reads[JsSettings]
@@ -53,7 +59,10 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
     Future(Ok(Json.toJson(JsSettings(
       enabled = mc.getRunning.getValue,
       intervalInSec = mc.getInterval.getValue,
-      multiplier = mc.getMultiplier.getValue))))
+      multiplier = mc.getMultiplier.getValue,
+      minBidPrice = mc.getMinBidPrice.getValue,
+      maxBidPrice = mc.getMaxBidPrice.getValue
+    ))))
   }
 
   def getLogs: Action[AnyContent] = Action.async {

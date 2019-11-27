@@ -36,6 +36,10 @@ public interface MainControllerInterface {
 
     DoubleProperty getMultiplier();
 
+    DoubleProperty getMinBidPrice();
+
+    DoubleProperty getMaxBidPrice();
+
     IntegerProperty getInterval();
 
     IntegerProperty getNextSync();
