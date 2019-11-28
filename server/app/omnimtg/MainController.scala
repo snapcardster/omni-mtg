@@ -23,6 +23,10 @@ case class LogItem(timestamp: Long, text: String, deleted: List[String], changed
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
 
+  var bidLanguages: List[Int] = Nil
+  var bidConditions: List[Int] = Nil
+  var bidFoils: List[Boolean] = Nil
+
   def println(x: Any): Unit = {
     nativeProvider.println(x match {
       case x: Throwable => x.toString + "[" + x.getStackTrace.take(5).mkString(", ") + "]"
@@ -198,7 +202,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   def save(nativeBase: Object): Unit = {
     println("save props")
-    val ex = nativeProvider.save(prop, nativeBase)
+    val ex = nativeProvider.save(prop, this, nativeBase)
     if (ex != null) {
       handleEx(ex)
     }
@@ -293,7 +297,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       case e: Exception => println(e)
     }
     val saveBackupPathAbsolute = saveBackupPath.getAbsolutePath
-    val e = nativeProvider.saveToFile(saveBackupPathAbsolute, csv, nativeBase)
+    val e = nativeProvider.saveToFile(saveBackupPathAbsolute, csv.mkString("\n"), nativeBase)
     if (e != null) {
       println(e)
     }
@@ -306,10 +310,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     sb.append("Loading MKM stock...\n")
     csv = loadMkmStock(getMkm)
-    sb.append("  " + csv.count(x => x == '\n') + " lines read from mkm stock\n")
+    sb.append("  " + csv.length + " lines read from mkm stock\n")
     output.setValue(sb.toString)
 
-    val res = postToSnap(csv)
+    val res = postToSnap(csv.mkString("\n"))
 
     // output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
     println("res has a length of " + res.length)
@@ -479,29 +483,86 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   var lastBidCreateOptions: String = ""
 
-  def postToSnapBids(csv: String): String = {
+  def filterBids(csv: Array[String]): Array[String] = {
     val bidPriceMultiplierValue: Double = Double.unbox(bidPriceMultiplier.getValue)
     val minBidPriceValue: Double = Double.unbox(minBidPrice.getValue)
     val maxBidPriceValue: Double = Double.unbox(maxBidPrice.getValue)
-    val askPriceMultiplierValue: Double = Double.unbox(askPriceMultiplier.getValue)
+    val empty: Array[String] = Array()
+
+    //    Predef.println("inspect lines" + csv.length)
+
+    csv.flatMap { line =>
+      val parts = line.split(splitter)
+
+      val idProduct = parts(1)
+      if (idProduct == "idProduct") {
+        Array(line)
+      } else {
+        //Predef.println("inspect line" + line)
+        val price = parts(6)
+        //Predef.println("as" + line + " : " + price)
+        //println(price + "(" + line + ")")
+        var resultPrice = price.toDouble * bidPriceMultiplierValue
+        if (resultPrice < 0.01) {
+          resultPrice = 0.01
+        }
+        if (minBidPriceValue <= resultPrice && resultPrice <= maxBidPriceValue) {
+          val languageString = parts(7)
+          val conditionString = parts(8)
+          val foilString = parts(9)
+
+          //"583700611";"366171";"Liliana of the Veil";"Liliana of the Veil";"";"Ultimate Masters";"100.00";"1";"NM";"";"";"";"";"";"1";"1";""
+          val language = ParseMkm.parseLanguage(languageString)
+          val condition = ParseMkm.parseCondition(conditionString)
+          val foil = ParseMkm.parseFoil(foilString)
+
+          if (bidFoils.contains(foil) && bidLanguages.contains(language) && bidConditions.contains(condition)) {
+            /*
+                0;          1;             2;           3;     4;          5;      6; ...
+      "idArticle";"idProduct";"English Name";"Local Name";"Exp.";"Exp. Name";"Price";"Language";"Condition";"Foil?";"Signed?";"Playset?";"Altered?";"Comments";"Amount";"onSale";"Collector Number"
+      "561339329";"399979";"Murderous Rider // Swift End";"Murderous Rider // Swift End";"ELD";"Throne of Eldraine";"22.00";"1";"NM";"";"";"";"";"";"1";"1";"97"
+           */
+            val partsReplaced = parts.zipWithIndex.map { case (x, i) =>
+              if (i == 6) { // change price, two digits
+                (Math.floor(resultPrice * 100) / 100.0).toString
+              } else {
+                x
+              }
+            }
+            Array(partsReplaced.mkString(splitter))
+          } else {
+            empty
+          }
+        } else {
+          empty
+        }
+      }
+    }
+  }
+
+  def postToSnapBids(csv: Array[String]): String = {
+    val bidPriceMultiplierValue: Double = Double.unbox(bidPriceMultiplier.getValue)
+    val minBidPriceValue: Double = Double.unbox(minBidPrice.getValue)
+    val maxBidPriceValue: Double = Double.unbox(maxBidPrice.getValue)
     if (bidPriceMultiplierValue != 0.0) {
       try {
         val body = new Gson().toJson(MKMCsv(
           "mkmStock.csv",
-          csv,
-          bidPriceMultiplierValue,
-          minBidPriceValue,
-          maxBidPriceValue,
-          askPriceMultiplierValue
+          filterBids(csv).mkString("\n"),
+          bidPriceMultiplier = Some(1.0)
+          // we filter csv now here and change values
+          // instead of letting the backend do that
         ))
         // println("postbids: " + body)
         val res = snapConnector.call(snapCsvBidEndpoint, "POST", getAuth, body)
-        val currentBidCreateOptions = "mult" + bidPriceMultiplierValue + ",min" + minBidPriceValue + ",max" + maxBidPriceValue
+        val currentBidCreateOptions =
+          "mult" + bidPriceMultiplierValue + ",min" + minBidPriceValue + ",max" + maxBidPriceValue +
+            "bidFoils" + bidFoils + ",bidLanguages" + bidLanguages + "bidConditions" + bidConditions
 
         if (currentBidCreateOptions != lastBidCreateOptions) {
           lastBidCreateOptions = currentBidCreateOptions
           println("save in props: " + currentBidCreateOptions)
-          nativeProvider.save(prop, null)
+          nativeProvider.save(prop, this, null)
         }
         res
       } catch {
@@ -518,10 +579,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val body = new Gson().toJson(MKMCsv(
       "mkmStock.csv",
       csv,
-      bidPriceMultiplier = 1.00,
-      minBidPrice = 0.0,
-      maxBidPrice = 0.0,
-      askPriceMultiplier = askPriceMultiplier.getValue))
+      askPriceMultiplier = Some(askPriceMultiplier.getValue)
+      // we need ask csv unchanged in case it goes back
+    ))
     val res = snapConnector.call(snapCsvEndpoint, "POST", getAuth, body)
     res
   }
@@ -625,7 +685,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       }.toMap*/
   }
 
-  def getCsvWithProductInfo(mkm: M11DedicatedApp): Option[String] = {
+  def getCsvWithProductInfo(mkm: M11DedicatedApp): Option[Array[String]] = {
     if (mkmReqTimoutable(mkmStockFileEndpoint, "GET", (url, method) =>
       mkm.request(url, method, null, null, true))) {
       val jsonWithCsv = mkm.responseContent
@@ -634,7 +694,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
       val csv = getCsvLines(jsonWithCsv)
       refreshLookupIfNeeded(mkm, csv)
-      return Some(buildNewCsv(csv).mkString("\n"))
+      return Some(buildNewCsv(csv))
     }
     None
   }
@@ -644,7 +704,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   var oversizedNames: Set[String] = Set.empty
   var oversizedNamesAge: Long = 0
 
-  def loadMkmStock(mkm: M11DedicatedApp): String = {
+  def loadMkmStock(mkm: M11DedicatedApp): Array[String] = {
 
     oversizedNamesAge += 1
     if (oversizedNamesAge > 100 || oversizedNames.isEmpty) {

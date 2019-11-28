@@ -25,10 +25,11 @@ object JavaFXPropertyFactory extends omnimtg.Interfaces.PropertyFactory {
     stringProp
   }
 
-  override def newIntegerProperty(name: String, initialValue: Integer, prop: Properties) = new JavaFXIntegerProperty(initialValue)
+  override def newIntegerProperty(name: String, initialValue: Integer, prop: Properties) =
+    new JavaFXIntegerProperty(initialValue)
 
-  override def newDoubleProperty(name: String, initialValue: java.lang.Double, prop: Properties) = new JavaFxDoubleProperty(initialValue)
-
+  override def newDoubleProperty(name: String, initialValue: java.lang.Double, prop: Properties) =
+    new JavaFxDoubleProperty(initialValue)
 
   override def newObjectProperty(initialValue: Object) = new JavaFXObjectProperty(initialValue)
 }

@@ -23,7 +23,50 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
     }
   }
 
-  override def save(prop: Properties, nativeBase: Object): Throwable = {
+  def updateProp(str: String, property: StringProperty, prop: Properties): Unit = {
+    val value = prop.get(str)
+    if (value != null && value != "") {
+      property.setValue(String.valueOf(value))
+    }
+  }
+
+  def updateProp(str: String, property: DoubleProperty, prop: Properties): Unit = {
+    val value = prop.get(str)
+    if (value != null && value != "") {
+      property.setValue(java.lang.Double.parseDouble(String.valueOf(value)))
+    }
+  }
+
+  def updateProperties(str: String, property: StringProperty, prop: Properties): Unit = {
+    prop.setProperty(str, property.getValue)
+  }
+
+  def updateProperties(str: String, property: DoubleProperty, prop: Properties): Unit = {
+    prop.setProperty(str, property.getValue.toString)
+  }
+
+  def updateProperties[T](str: String, value: List[String], prop: Properties): Unit = {
+    prop.setProperty(str, value.mkString("|"))
+  }
+
+  override def save(prop: Properties, rawController: Any, nativeBase: Object): Throwable = {
+    val controller: MainController = rawController.asInstanceOf[MainController]
+
+    updateProperties("mkmApp", controller.mkmAppToken, prop)
+    updateProperties("mkmAppSecret", controller.mkmAppSecret, prop)
+    updateProperties("mkmAccessToken", controller.mkmAccessToken, prop)
+    updateProperties("mkmAccessTokenSecret", controller.mkmAccessTokenSecret, prop)
+    updateProperties("snapUser", controller.snapUser, prop)
+    updateProperties("snapToken", controller.snapToken, prop)
+    updateProperties("bidPriceMultiplier", controller.bidPriceMultiplier, prop)
+    updateProperties("minBidPrice", controller.minBidPrice, prop)
+    updateProperties("maxBidPrice", controller.maxBidPrice, prop)
+    updateProperties("askPriceMultiplier", controller.askPriceMultiplier, prop)
+
+    updateProperties("bidFoils", controller.bidFoils.map(_.toString), prop)
+    updateProperties("bidConditions", controller.bidConditions.map(_.toString), prop)
+    updateProperties("bidLanguages", controller.bidLanguages.map(_.toString), prop)
+
     var str: OutputStream = new ByteArrayOutputStream()
     try {
       str = new FileOutputStream(configPath.toFile)
@@ -36,17 +79,12 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
     null
   }
 
-  def updateProp(str: String, property: StringProperty, prop: Properties): Unit = {
-    val value = prop.get(str)
+  def readList[T](prop: Properties, key: String, f: String => T): List[T] = {
+    val value = prop.getProperty(key)
     if (value != null && value != "") {
-      property.setValue(String.valueOf(value))
-    }
-  }
-
-  def updateProp(str: String, property: DoubleProperty, prop: Properties): Unit = {
-    val value = prop.get(str)
-    if (value != null && value != "") {
-      property.setValue(java.lang.Double.parseDouble(String.valueOf(value)))
+      value.split("""|""").map(f).toList
+    } else {
+      Nil
     }
   }
 
@@ -72,6 +110,10 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
       updateProp("minBidPrice", controller.minBidPrice, prop)
       updateProp("maxBidPrice", controller.maxBidPrice, prop)
       updateProp("askPriceMultiplier", controller.askPriceMultiplier, prop)
+
+      controller.bidFoils = readList(prop, "bidFoils", str => str.toBoolean)
+      controller.bidLanguages = readList(prop, "bidLanguages", str => str.toInt)
+      controller.bidConditions = readList(prop, "bidConditions", str => str.toInt)
 
       if (prop.get("mkmAppToken") != null) {
         controller.output.setValue("Stored authentication information restored")

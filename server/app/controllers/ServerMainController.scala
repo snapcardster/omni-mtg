@@ -19,10 +19,16 @@ object JsStatus {
 case class JsSettings(
                        enabled: Boolean,
                        intervalInSec: Int,
+
                        bidPriceMultiplier: Double,
+
                        maxBidPrice: Double,
                        minBidPrice: Double,
-                       askPriceMultiplier: Double
+                       askPriceMultiplier: Double,
+
+                       bidLanguages: List[Int],
+                       bidConditions: List[Int],
+                       bidFoils: List[Boolean]
                      )
 
 object JsSettings {
@@ -63,7 +69,11 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
       bidPriceMultiplier = mc.bidPriceMultiplier.getValue,
       minBidPrice = mc.minBidPrice.getValue,
       maxBidPrice = mc.maxBidPrice.getValue,
-      askPriceMultiplier = mc.askPriceMultiplier.getValue
+      askPriceMultiplier = mc.askPriceMultiplier.getValue,
+
+      bidLanguages = mc.bidLanguages,
+      bidConditions = mc.bidConditions,
+      bidFoils = mc.bidFoils
     ))))
   }
 
@@ -93,18 +103,34 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   def postSettings: Action[AnyContent] = Action.async { req =>
     parseJs(req, JsSettings.r) { x: JsSettings =>
       mc.interval.setValue(x.intervalInSec)
+      val changeList: List[(String, Any, Any)] =
+        List(
+          ("bidPriceMultiplier", mc.bidPriceMultiplier.getValue, x.bidPriceMultiplier),
+          ("askPriceMultiplier", mc.askPriceMultiplier.getValue, x.askPriceMultiplier),
+          ("bidLanguages", mc.bidLanguages, x.bidLanguages),
+          ("bidConditions", mc.bidConditions, x.bidConditions),
+          ("bidFoils", mc.bidFoils, x.bidFoils)
+        ).filter(x => x._2 != x._3)
+
       mc.bidPriceMultiplier.setValue(x.bidPriceMultiplier)
       mc.askPriceMultiplier.setValue(x.askPriceMultiplier)
 
+      mc.bidLanguages = x.bidLanguages
+      mc.bidConditions = x.bidConditions
+      mc.bidFoils = x.bidFoils
+
       val old = mc.running.getValue
       mc.running.setValue(x.enabled)
-      if (x.enabled && !old) {
-        Future(Ok(Json.toJson(Seq("Interval set", "Sync started"))))
-      } else if (!x.enabled && old) {
-        Future(Ok(Json.toJson(Seq("Interval set", "Sync stopped (current run is unaffected)"))))
-      } else {
-        Future(Ok(Json.toJson(Seq("Interval set", "Was started already"))))
-      }
+      val res =
+        if (x.enabled && !old) {
+          Seq("Interval set", "Sync started")
+        } else if (!x.enabled && old) {
+          List("Interval set", "Sync stopped (current run is unaffected)")
+        } else {
+          List("Interval set", "Was started already")
+        }
+      val attrChange = changeList.map(x => x._1 + "changed from " + x._2 + " to " + x._3)
+      Future.successful(Ok(Json.toJson(res ++ attrChange)))
     }
   }
 

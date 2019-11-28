@@ -1,7 +1,7 @@
 import java.io.{File, FileReader}
 import java.util.Properties
 
-import omnimtg.{Condition, Config, CsvFormat, DesktopFunctionProvider, JavaFXPropertyFactory, Language, M11DedicatedApp, MainController, SellerDataChanged}
+import omnimtg.{Condition, Config, CsvFormat, DesktopFunctionProvider, JavaFXPropertyFactory, Language, M11DedicatedApp, MainController, ParseMkm, SellerDataChanged}
 import org.junit.{Assert, Test}
 
 // @RunWith(BlockJUnit4ClassRunner.getClass)
@@ -47,6 +47,12 @@ class BidsFromCsvTest {
     // m.loadSnapChangedAndDeleteFromStock(new StringBuilder)
 
     val csv = m.loadMkmStock(app)
+
+    println(csv.mkString("\n"))
+
+    m.bidConditions = ParseMkm.allConditionsData.map(_.id).toList
+    m.bidLanguages = ParseMkm.allLanguagesData.map(_.id).toList
+    m.bidFoils = ParseMkm.allFoilsData.map(_.value).toList
 
     var items = m.postToSnapBids(csv)
     Assert.assertEquals("", items)
