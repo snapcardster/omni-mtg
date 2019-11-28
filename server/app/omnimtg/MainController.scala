@@ -72,7 +72,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   override def getThread = thread
 
-  private val prop: Properties = new Properties
+  private val prop: Properties = new Properties()
 
   override def getProperties = prop
 

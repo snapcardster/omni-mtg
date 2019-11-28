@@ -38,7 +38,7 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
   }
 
   def updateProperties(str: String, property: StringProperty, prop: Properties): Unit = {
-    prop.setProperty(str, property.getValue)
+    prop.setProperty(str, String.valueOf(property.getValue))
   }
 
   def updateProperties(str: String, property: DoubleProperty, prop: Properties): Unit = {
