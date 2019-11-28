@@ -157,7 +157,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       }
     }
     if (containedOne) {
-      save(null)
+      save(prop)
     }
 
     if (env.containsKey("snapBaseUrl")) {
