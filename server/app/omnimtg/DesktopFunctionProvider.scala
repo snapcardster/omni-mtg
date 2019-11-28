@@ -50,7 +50,9 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
     }
   }
 
-  override def readProperties(prop: Properties, controller: MainControllerInterface, nativeBase: Object): Throwable = {
+  override def readProperties(prop: Properties, mainController: Object, nativeBase: Object): Throwable = {
+    val controller = mainController.asInstanceOf[MainController]
+
     if (!configPath.toFile.exists) {
       configPath.toFile.createNewFile
     }
@@ -60,18 +62,19 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
       str = new FileInputStream(configPath.toFile)
       prop.load(str)
 
-      updateProp("mkmApp", controller.getMkmAppToken, prop)
-      updateProp("mkmAppSecret", controller.getMkmAppSecret, prop)
-      updateProp("mkmAccessToken", controller.getMkmAccessToken, prop)
-      updateProp("mkmAccessTokenSecret", controller.getMkmAccessTokenSecret, prop)
-      updateProp("snapUser", controller.getSnapUser, prop)
-      updateProp("snapToken", controller.getSnapToken, prop)
-      updateProp("multiplier", controller.getMultiplier, prop)
-      updateProp("minBidPrice", controller.getMinBidPrice, prop)
-      updateProp("maxBidPrice", controller.getMaxBidPrice, prop)
+      updateProp("mkmApp", controller.mkmAppToken, prop)
+      updateProp("mkmAppSecret", controller.mkmAppSecret, prop)
+      updateProp("mkmAccessToken", controller.mkmAccessToken, prop)
+      updateProp("mkmAccessTokenSecret", controller.mkmAccessTokenSecret, prop)
+      updateProp("snapUser", controller.snapUser, prop)
+      updateProp("snapToken", controller.snapToken, prop)
+      updateProp("bidPriceMultiplier", controller.bidPriceMultiplier, prop)
+      updateProp("minBidPrice", controller.minBidPrice, prop)
+      updateProp("maxBidPrice", controller.maxBidPrice, prop)
+      updateProp("askPriceMultiplier", controller.askPriceMultiplier, prop)
 
       if (prop.get("mkmAppToken") != null) {
-        controller.getOutput.setValue("Stored authentication information restored")
+        controller.output.setValue("Stored authentication information restored")
       }
     } catch {
       case e: Exception => e

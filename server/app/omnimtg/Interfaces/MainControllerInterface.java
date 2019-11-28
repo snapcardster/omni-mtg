@@ -14,6 +14,7 @@ public interface MainControllerInterface {
 
     Properties getProperties();
 
+    /*
     BooleanProperty getAborted();
 
     BooleanProperty getRunning();
@@ -47,7 +48,7 @@ public interface MainControllerInterface {
     BooleanProperty getInSync();
 
     ObjectProperty getRequest();
-
+    */
     void loginSnap();
 
     void insertFromClip(String mode, String data);

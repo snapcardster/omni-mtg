@@ -7,7 +7,7 @@ public interface NativeFunctionProvider {
 
     Throwable save(Properties prop, Object nativeBase);
 
-    Throwable readProperties(Properties prop, MainControllerInterface controller, Object nativeBase);
+    Throwable readProperties(Properties prop, Object controller, Object nativeBase);
 
     byte[] decodeBase64(String str);
 

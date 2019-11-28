@@ -24,18 +24,18 @@ class BidsFromCsvTest {
         properties.getProperty("mkmAccessTokenSecret")
       )
     val m = new MainController(JavaFXPropertyFactory, new DesktopFunctionProvider)
-    m.getMkmAppToken.setValue(mkmApp)
-    m.getMkmAppSecret.setValue(mkmAppSecret)
-    m.getMkmAccessToken.setValue(mkmAccessToken)
-    m.getMkmAccessTokenSecret.setValue(mkmAccessTokenSecret)
+    m.mkmAppToken.setValue(mkmApp)
+    m.mkmAppSecret.setValue(mkmAppSecret)
+    m.mkmAccessToken.setValue(mkmAccessToken)
+    m.mkmAccessTokenSecret.setValue(mkmAccessTokenSecret)
 
     val app = new M11DedicatedApp(
       mkmApp, mkmAppSecret, mkmAccessToken, mkmAccessTokenSecret,
       new DesktopFunctionProvider
     )
 
-    m.getSnapUser.setValue(properties.getProperty("snapUser"))
-    m.getSnapToken.setValue(properties.getProperty("snapToken"))
+    m.snapUser.setValue(properties.getProperty("snapUser"))
+    m.snapToken.setValue(properties.getProperty("snapToken"))
 
     m.snapBaseUrl = "https://dev.snapcardster.com"
 
@@ -51,7 +51,7 @@ class BidsFromCsvTest {
     var items = m.postToSnapBids(csv)
     Assert.assertEquals("", items)
 
-    m.getMultiplier.setValue(0.5)
+    m.bidPriceMultiplier.setValue(0.5)
     items = m.postToSnapBids(csv)
 
     Assert.assertNotEquals("", items)

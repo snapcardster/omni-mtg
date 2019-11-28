@@ -30,7 +30,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     })
   }
 
-  val title: String = "Omni MTG Sync Tool 2019-11-18 [H]"
+  val title: String = "Omni MTG Sync Tool 2019-11-28 [Headless Server]"
 
   // when scryfall deployed: 3, before: 2
   val snapApiVersion: String = "3"
@@ -65,32 +65,41 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
 
   private var thread: Thread = null
+
+  override def getThread = thread
+
   private val prop: Properties = new Properties
+
+  override def getProperties = prop
+
   private val backupPath: Path = null
   //Paths.get("mkm_backup_" + System.currentTimeMillis() + ".csv")
-  private val aborted: BooleanProperty = propFactory.newBooleanProperty(false)
-  private val running: BooleanProperty = propFactory.newBooleanProperty(false)
-  private val inSync: BooleanProperty = propFactory.newBooleanProperty(false)
-  private val mkmAppToken: StringProperty = propFactory.newStringProperty("mkmApp", "", prop)
-  private val mkmAppSecret: StringProperty = propFactory.newStringProperty("mkmAppSecret", "", prop)
-  private val mkmAccessToken: StringProperty = propFactory.newStringProperty("mkmAccessToken", "", prop)
-  private val mkmAccessTokenSecret: StringProperty = propFactory.newStringProperty("mkmAccessTokenSecret", "", prop)
-  private val snapUser: StringProperty = propFactory.newStringProperty("snapUser", "", prop)
-  private val multiplier: DoubleProperty = propFactory.newDoubleProperty("multiplier", 0.0, prop)
-  private val minBidPrice: DoubleProperty = propFactory.newDoubleProperty("minBidPrice", 0.0, prop)
-  private val maxBidPrice: DoubleProperty = propFactory.newDoubleProperty("maxBidPrice", 0.0, prop)
+  val aborted: BooleanProperty = propFactory.newBooleanProperty(false)
+  val running: BooleanProperty = propFactory.newBooleanProperty(false)
+  val inSync: BooleanProperty = propFactory.newBooleanProperty(false)
+  val mkmAppToken: StringProperty = propFactory.newStringProperty("mkmApp", "", prop)
+  val mkmAppSecret: StringProperty = propFactory.newStringProperty("mkmAppSecret", "", prop)
+  val mkmAccessToken: StringProperty = propFactory.newStringProperty("mkmAccessToken", "", prop)
+  val mkmAccessTokenSecret: StringProperty = propFactory.newStringProperty("mkmAccessTokenSecret", "", prop)
+  val snapUser: StringProperty = propFactory.newStringProperty("snapUser", "", prop)
 
-  private val snapPassword: StringProperty = propFactory.newStringProperty("snapPassword", "", prop)
-  private val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
-  private val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
-  private val interval: IntegerProperty = propFactory.newIntegerProperty("interval", 180, prop)
-  private val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
-  private val request: ObjectProperty = propFactory.newObjectProperty(null)
-  private val logs: ObjectProperty = propFactory.newObjectProperty(Nil)
+  val bidPriceMultiplier: DoubleProperty = propFactory.newDoubleProperty("bidPriceMultiplier", 0.0, prop)
+  val minBidPrice: DoubleProperty = propFactory.newDoubleProperty("minBidPrice", 0.0, prop)
+  val maxBidPrice: DoubleProperty = propFactory.newDoubleProperty("maxBidPrice", 0.0, prop)
+  val askPriceMultiplier: DoubleProperty = propFactory.newDoubleProperty("askPriceMultiplier", 1.0, prop)
+
+  val snapPassword: StringProperty = propFactory.newStringProperty("snapPassword", "", prop)
+  val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
+  val output: StringProperty = propFactory.newStringProperty("Output appears here. Click Start Sync to start. This requires valid api data.")
+  val interval: IntegerProperty = propFactory.newIntegerProperty("interval", 180, prop)
+  val nextSync: IntegerProperty = propFactory.newIntegerProperty(0)
+  val request: ObjectProperty = propFactory.newObjectProperty(null)
+  val logs: ObjectProperty = propFactory.newObjectProperty(Nil)
   //private var backupFirst = true
-  private var addedList: List[String] = Nil
-  private var changedList: List[String] = Nil
-  private var deletedList: List[String] = Nil
+
+  var addedList: List[String] = Nil
+  var changedList: List[String] = Nil
+  var deletedList: List[String] = Nil
 
   def insertFromClip(mode: String, data: String): Unit = {
     mode match {
@@ -471,21 +480,23 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   var lastBidCreateOptions: String = ""
 
   def postToSnapBids(csv: String): String = {
-    val multiplierValue: Double = Double.unbox(multiplier.getValue)
+    val bidPriceMultiplierValue: Double = Double.unbox(bidPriceMultiplier.getValue)
     val minBidPriceValue: Double = Double.unbox(minBidPrice.getValue)
     val maxBidPriceValue: Double = Double.unbox(maxBidPrice.getValue)
-    if (multiplierValue != 0.0) {
+    val askPriceMultiplierValue: Double = Double.unbox(askPriceMultiplier.getValue)
+    if (bidPriceMultiplierValue != 0.0) {
       try {
         val body = new Gson().toJson(MKMCsv(
           "mkmStock.csv",
           csv,
-          multiplierValue,
+          bidPriceMultiplierValue,
           minBidPriceValue,
-          maxBidPriceValue
+          maxBidPriceValue,
+          askPriceMultiplierValue
         ))
         // println("postbids: " + body)
         val res = snapConnector.call(snapCsvBidEndpoint, "POST", getAuth, body)
-        val currentBidCreateOptions = "mult" + multiplierValue + ",min" + minBidPriceValue + ",max" + maxBidPriceValue
+        val currentBidCreateOptions = "mult" + bidPriceMultiplierValue + ",min" + minBidPriceValue + ",max" + maxBidPriceValue
 
         if (currentBidCreateOptions != lastBidCreateOptions) {
           lastBidCreateOptions = currentBidCreateOptions
@@ -495,7 +506,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         res
       } catch {
         case e: Throwable =>
-          handleEx(e, "postToSnapBids with mult " + multiplierValue)
+          handleEx(e, "postToSnapBids with mult " + bidPriceMultiplierValue)
           ""
       }
     } else {
@@ -504,7 +515,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def postToSnap(csv: String): String = {
-    val body = new Gson().toJson(MKMCsv("mkmStock.csv", csv, 1, 0.0, 0.0))
+    val body = new Gson().toJson(MKMCsv(
+      "mkmStock.csv",
+      csv,
+      bidPriceMultiplier = 1.00,
+      minBidPrice = 0.0,
+      maxBidPrice = 0.0,
+      askPriceMultiplier = askPriceMultiplier.getValue))
     val res = snapConnector.call(snapCsvEndpoint, "POST", getAuth, body)
     res
   }
@@ -1058,44 +1075,4 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val names = x.map(x => getXml(x).getFirstChild.getFirstChild.getTextContent)
     names*/
   }
-
-  override def getThread: Thread = thread
-
-  override def getProperties: Properties = prop
-
-  override def getAborted: BooleanProperty = aborted
-
-  override def getRunning: BooleanProperty = running
-
-  override def getMkmAppToken: StringProperty = mkmAppToken
-
-  override def getMkmAppSecret: StringProperty = mkmAppSecret
-
-  override def getMkmAccessToken: StringProperty = mkmAccessToken
-
-  override def getMkmAccessTokenSecret: StringProperty = mkmAccessTokenSecret
-
-  override def getSnapUser: StringProperty = snapUser
-
-  override def getSnapPassword: StringProperty = snapPassword
-
-  override def getSnapToken: StringProperty = snapToken
-
-  override def getOutput: StringProperty = output
-
-  override def getMultiplier: DoubleProperty = multiplier
-
-  override def getMaxBidPrice: DoubleProperty = maxBidPrice
-
-  override def getMinBidPrice: DoubleProperty = minBidPrice
-
-  override def getInterval: IntegerProperty = interval
-
-  override def getNextSync: IntegerProperty = nextSync
-
-  override def getInSync: BooleanProperty = inSync
-
-  override def getRequest: ObjectProperty = request
-
-  def getLog: ObjectProperty = logs
 }

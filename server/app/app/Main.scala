@@ -8,8 +8,9 @@ object MainApp extends App {
 
 object Main {
   def main(args: Array[String]): Unit = {
+    println("Start this as a play server instead")
     //if (!args.contains("headless")) {
-    javafx.application.Application.launch(classOf[omnimtg.MainGUI], args: _*)
+    //javafx.application.Application.launch(classOf[omnimtg.MainGUI], args: _*)
     /*} else {
 
     import controllers.ServerMainController

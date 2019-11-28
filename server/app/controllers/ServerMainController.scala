@@ -19,9 +19,10 @@ object JsStatus {
 case class JsSettings(
                        enabled: Boolean,
                        intervalInSec: Int,
-                       multiplier: Double,
+                       bidPriceMultiplier: Double,
                        maxBidPrice: Double,
-                       minBidPrice: Double
+                       minBidPrice: Double,
+                       askPriceMultiplier: Double
                      )
 
 object JsSettings {
@@ -49,19 +50,20 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
 
   def getStatus: Action[AnyContent] = Action.async {
     Future(Ok(Json.toJson(JsStatus(
-      timeToNextSyncInSec = mc.getNextSync.getValue,
-      running = mc.getRunning.getValue,
-      inSync = mc.getInSync.getValue
+      timeToNextSyncInSec = mc.nextSync.getValue,
+      running = mc.running.getValue,
+      inSync = mc.inSync.getValue
     ))))
   }
 
   def getSettings: Action[AnyContent] = Action.async {
     Future(Ok(Json.toJson(JsSettings(
-      enabled = mc.getRunning.getValue,
-      intervalInSec = mc.getInterval.getValue,
-      multiplier = mc.getMultiplier.getValue,
-      minBidPrice = mc.getMinBidPrice.getValue,
-      maxBidPrice = mc.getMaxBidPrice.getValue
+      enabled = mc.running.getValue,
+      intervalInSec = mc.interval.getValue,
+      bidPriceMultiplier = mc.bidPriceMultiplier.getValue,
+      minBidPrice = mc.minBidPrice.getValue,
+      maxBidPrice = mc.maxBidPrice.getValue,
+      askPriceMultiplier = mc.askPriceMultiplier.getValue
     ))))
   }
 
@@ -71,7 +73,7 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
     implicit val w: Writes[LogItem] = Json.writes[LogItem]
     //}
 
-    Future(Ok(Json.toJson(mc.getLogs.asInstanceOf[List[LogItem]])))
+    Future(Ok(Json.toJson(mc.logs.getValue.asInstanceOf[List[LogItem]])))
   }
 
   def parseJs[T](req: Request[AnyContent], rds: Reads[T])(f: T => Future[Result]): Future[Result] = {
@@ -90,11 +92,12 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
 
   def postSettings: Action[AnyContent] = Action.async { req =>
     parseJs(req, JsSettings.r) { x: JsSettings =>
-      mc.getInterval.setValue(x.intervalInSec)
-      mc.getMultiplier.setValue(x.multiplier)
+      mc.interval.setValue(x.intervalInSec)
+      mc.bidPriceMultiplier.setValue(x.bidPriceMultiplier)
+      mc.askPriceMultiplier.setValue(x.askPriceMultiplier)
 
-      val old = mc.getRunning.getValue
-      mc.getRunning.setValue(x.enabled)
+      val old = mc.running.getValue
+      mc.running.setValue(x.enabled)
       if (x.enabled && !old) {
         Future(Ok(Json.toJson(Seq("Interval set", "Sync started"))))
       } else if (!x.enabled && old) {
@@ -108,8 +111,8 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   def postExitRequest(): Action[AnyContent] = Action.async {
     val retCode = 42
     var when = "exit is scheduled"
-    var whenTime = mc.getNextSync.getValue
-    if (!mc.getInSync.getValue) {
+    var whenTime = mc.nextSync.getValue
+    if (!mc.inSync.getValue) {
       when = "exiting now"
       whenTime = 0
       new Thread(() => {
@@ -118,12 +121,12 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
       }).start
     }
 
-    mc.getRequest.setValue(() => System.exit(retCode))
-    mc.getRunning.setValue(false)
+    mc.request.setValue(() => System.exit(retCode))
+    mc.running.setValue(false)
 
     Future(Ok(Json.toJson(Seq(
       "Ok, ",
-      "Running: " + mc.getRunning.getValue,
+      "Running: " + mc.running.getValue,
       "Time to exit is: " + whenTime
     ))))
   }
