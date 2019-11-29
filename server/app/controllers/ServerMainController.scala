@@ -129,7 +129,7 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
         } else {
           List("Interval set", "Was started already")
         }
-      val attrChange = changeList.map(x => x._1 + "changed from " + x._2 + " to " + x._3)
+      val attrChange = changeList.map(x => x._1 + " changed from " + x._2 + " to " + x._3)
       Future.successful(Ok(Json.toJson(res ++ attrChange)))
     }
   }

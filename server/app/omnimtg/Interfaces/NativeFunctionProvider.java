@@ -5,7 +5,9 @@ import java.util.Properties;
 public interface NativeFunctionProvider {
     void openLink(String url);
 
-    Throwable save(Properties prop, Object controller, Object nativeBase);
+    Throwable updatePropertiesFromPropsAndSaveToFile(Properties prop, Object controller, Object nativeBase);
+
+    Throwable savePropertiesToFile(Properties prop, Object nativeBase);
 
     Throwable readProperties(Properties prop, Object controller, Object nativeBase);
 

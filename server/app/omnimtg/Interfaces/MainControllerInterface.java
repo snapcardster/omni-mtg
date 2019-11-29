@@ -6,8 +6,6 @@ public interface MainControllerInterface {
 
     void sync(Object nativeBase);
 
-    void save(Object nativeBase);
-
     void readProperties(Object nativeBase);
 
     Thread getThread();

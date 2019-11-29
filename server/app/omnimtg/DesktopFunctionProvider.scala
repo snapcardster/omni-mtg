@@ -49,7 +49,7 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
     prop.setProperty(str, value.mkString("|"))
   }
 
-  override def save(prop: Properties, rawController: Any, nativeBase: Object): Throwable = {
+  override def updatePropertiesFromPropsAndSaveToFile(prop: Properties, rawController: Any, nativeBase: Object): Throwable = {
     val controller: MainController = rawController.asInstanceOf[MainController]
 
     updateProperties("mkmApp", controller.mkmAppToken, prop)
@@ -67,6 +67,10 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
     updateProperties("bidConditions", controller.bidConditions.map(_.toString), prop)
     updateProperties("bidLanguages", controller.bidLanguages.map(_.toString), prop)
 
+    savePropertiesToFile(prop, nativeBase)
+  }
+
+  override def savePropertiesToFile(prop: Properties, nativeBase: Object): Throwable = {
     var str: OutputStream = new ByteArrayOutputStream()
     try {
       str = new FileOutputStream(configPath.toFile)

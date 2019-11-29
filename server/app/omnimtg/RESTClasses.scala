@@ -44,10 +44,10 @@ case class SellerDataChanged(
 case class MKMCsv(
                    fileName: String,
                    fileContent: String,
-                   bidPriceMultiplier: Option[Double] = None,
-                   minBidPrice: Option[Double] = None,
-                   maxBidPrice: Option[Double] = None,
-                   askPriceMultiplier: Option[Double] = None
+                   bidPriceMultiplier: java.lang.Double = null,
+                   minBidPrice:java.lang.Double = null,
+                   maxBidPrice: java.lang.Double = null,
+                   askPriceMultiplier: java.lang.Double = null
                  )
 
 case class ImportConfirmation(collectionId: Long, successful: Boolean, added: Boolean, info: String)

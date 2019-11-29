@@ -157,7 +157,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       }
     }
     if (containedOne) {
-      save(prop)
+      savePropertiesToFile(nativeBase)
     }
 
     if (env.containsKey("snapBaseUrl")) {
@@ -202,9 +202,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     thread = run(nativeBase)
   }
 
-  def save(nativeBase: Object): Unit = {
-    println("save props")
-    val ex = nativeProvider.save(prop, this, nativeBase)
+  def savePropertiesToFile(nativeBase: Object): Unit = {
+    println("save props keys: " + prop.keySet().toArray.mkString(", "))
+    val ex = nativeProvider.savePropertiesToFile(prop, nativeBase)
     if (ex != null) {
       handleEx(ex)
     }
@@ -551,7 +551,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         val body = new Gson().toJson(MKMCsv(
           "mkmStock.csv",
           filterBids(csv).mkString("\n"),
-          bidPriceMultiplier = Some(1.0)
+          bidPriceMultiplier = 1.0
           // we filter csv now here and change values
           // instead of letting the backend do that
         ))
@@ -564,7 +564,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         if (currentBidCreateOptions != lastBidCreateOptions) {
           lastBidCreateOptions = currentBidCreateOptions
           println("save in props: " + currentBidCreateOptions)
-          nativeProvider.save(prop, this, null)
+          val x = nativeProvider.updatePropertiesFromPropsAndSaveToFile(prop, this, null)
+          if (x != null) {
+            handleEx(x, "updatePropertiesFromPropsAndSaveToFile")
+          }
         }
         res
       } catch {
@@ -581,7 +584,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val body = new Gson().toJson(MKMCsv(
       "mkmStock.csv",
       csv,
-      askPriceMultiplier = Some(askPriceMultiplier.getValue)
+      askPriceMultiplier = askPriceMultiplier.getValue
       // we need ask csv unchanged in case it goes back
     ))
     val res = snapConnector.call(snapCsvEndpoint, "POST", getAuth, body)
