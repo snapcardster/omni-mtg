@@ -26,10 +26,11 @@ object ParseMkm {
   );
 
   val allConditionsData = Array(
-    Entry(name = "Damaged", twoLetterCode = "DM", id = 1, usName = "Damaged"),
-    Entry(name = "Played", twoLetterCode = "PL", id = 2, usName = "Heavily Played"),
+    Entry(name = "Damaged", twoLetterCode = "PO", id = 1, usName = "Damaged"),
+    Entry(name = "Played", twoLetterCode = "PL", id = 2, usName = "Played"),
     Entry(name = "Good", twoLetterCode = "GD", id = 3, usName = "Moderately Played"),
     Entry(name = "Excellent", twoLetterCode = "EX", id = 4, usName = "Lightly Played"),
+    Entry(name = "LP", twoLetterCode = "LP", id = 4, usName = "Lightly Played"),
     Entry(name = "Near Mint", twoLetterCode = "NM", id = 5, usName = "Near Mint")
   );
 
