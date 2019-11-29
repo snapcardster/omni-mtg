@@ -170,13 +170,15 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     readProperties(nativeBase)
 
+    val keysWithLen = keys.map(k => k + "-size: " + Option(prop.getProperty(k)).getOrElse("").length).mkString(", ")
+
     if (keys.forall(k => Option(prop.getProperty(k)).getOrElse("").nonEmpty)) {
       running.setValue(true)
-      val str = title + "\nAll values were set in prop, autostarted. The properties file seems to be ok."
+      val str = title + s"\nAll values were set in prop ${keysWithLen}, autostarted. The properties file seems to be ok."
       println(str)
       output.setValue(str)
     } else {
-      val str = title + "\nNot all values were set in prop, no autostart. You can check the properties file."
+      val str = title + "\nNot all values were set in prop ${keysWithLen}, no autostart. You can check the properties file."
       println(str)
       output.setValue(str)
     }

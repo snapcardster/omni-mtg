@@ -24,14 +24,14 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
   }
 
   def updateProp(str: String, property: StringProperty, prop: Properties): Unit = {
-    val value = prop.get(str)
+    val value = prop.getProperty(str)
     if (value != null && value != "") {
       property.setValue(String.valueOf(value))
     }
   }
 
   def updateProp(str: String, property: DoubleProperty, prop: Properties): Unit = {
-    val value = prop.get(str)
+    val value = prop.getProperty(str)
     if (value != null && value != "") {
       property.setValue(java.lang.Double.parseDouble(String.valueOf(value)))
     }
@@ -115,7 +115,7 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
       controller.bidLanguages = readList(prop, "bidLanguages", str => str.toInt)
       controller.bidConditions = readList(prop, "bidConditions", str => str.toInt)
 
-      if (prop.get("mkmAppToken") != null) {
+      if (prop.getProperty("mkmAppToken") != null) {
         controller.output.setValue("Stored authentication information restored")
       }
     } catch {
