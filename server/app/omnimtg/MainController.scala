@@ -548,14 +548,17 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val maxBidPriceValue: Double = Double.unbox(maxBidPrice.getValue)
     if (bidPriceMultiplierValue != 0.0) {
       try {
+        val lines = filterBids(csv)
         val body = new Gson().toJson(MKMCsv(
           "mkmStock.csv",
-          filterBids(csv).mkString("\n"),
+          lines.mkString("\n"),
           bidPriceMultiplier = 1.0
           // we filter csv now here and change values
           // instead of letting the backend do that
         ))
-        // println("postbids: " + body)
+
+        println("post bids: " + lines.length + " lines of csv, first card line:\n" + lines.drop(1).headOption.getOrElse(""))
+
         val res = snapConnector.call(snapCsvBidEndpoint, "POST", getAuth, body)
         val currentBidCreateOptions =
           "mult" + bidPriceMultiplierValue + ",min" + minBidPriceValue + ",max" + maxBidPriceValue +
