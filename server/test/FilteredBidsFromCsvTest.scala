@@ -35,9 +35,8 @@ class FilteredBidsFromCsvTest {
       "\"583700611\";\"366171\";\"Liliana of the Veil\";\"Liliana of the Veil\";\"\";\"Ultimate Masters\";\"50.0\";\"1\";\"NM\";\"\";\"\";\"\";\"\";\"\";\"1\";\"1\";\"\""
     ).mkString("\n")
 
-    println(res)
-    println("should be")
-    println(expect)
+    println("Test\n" + res + "\nshould be\n" + expect)
+
 
     Assert.assertEquals(expect, res)
 
@@ -60,9 +59,8 @@ class FilteredBidsFromCsvTest {
       "\"idArticle\";\"idProduct\";\"English Name\";\"Local Name\";\"Exp.\";\"Exp. Name\";\"Price\";\"Language\";\"Condition\";\"Foil?\";\"Signed?\";\"Playset?\";\"Altered?\";\"Comments\";\"Amount\";\"onSale\";\"collectorNumber\""
     ).mkString("\n")
 
-    println(res)
-    println("should be")
-    println(expect)
+    println("Test\n" + res + "\nshould be\n" + expect)
+
 
     Assert.assertEquals(expect, res)
 
@@ -85,9 +83,8 @@ class FilteredBidsFromCsvTest {
       "\"idArticle\";\"idProduct\";\"English Name\";\"Local Name\";\"Exp.\";\"Exp. Name\";\"Price\";\"Language\";\"Condition\";\"Foil?\";\"Signed?\";\"Playset?\";\"Altered?\";\"Comments\";\"Amount\";\"onSale\";\"collectorNumber\""
     ).mkString("\n")
 
-    println(res)
-    println("should be")
-    println(expect)
+    println("Test\n" + res + "\nshould be\n" + expect)
+
 
     Assert.assertEquals(expect, res)
 
@@ -113,9 +110,7 @@ class FilteredBidsFromCsvTest {
       """"584663296";"372265";"Huatli, the Sun's Heart";"Huatli, the Sun's Heart";"";"War of the Spark";"1.0";"2";"GD";"X";"";"";"";"";"1";"1";"230""""
     ).mkString("\n")
 
-    println(res)
-    println("should be")
-    println(expect)
+    println("Test\n" + res + "\nshould be\n" + expect)
 
     Assert.assertEquals(expect, res)
 
