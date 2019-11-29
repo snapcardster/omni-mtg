@@ -178,7 +178,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       println(str)
       output.setValue(str)
     } else {
-      val str = title + "\nNot all values were set in prop ${keysWithLen}, no autostart. You can check the properties file."
+      val str = title + s"\nNot all values were set in prop ${keysWithLen}, no autostart. You can check the properties file."
       println(str)
       output.setValue(str)
     }
