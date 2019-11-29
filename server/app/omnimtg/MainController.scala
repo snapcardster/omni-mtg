@@ -330,13 +330,18 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     sb.append("• MKM to Snapcardster, changes at Snapcardster:\n" + info)
     output.setValue(sb.toString)
 
-    postToSnapBids(csv)
-
     addLogEntry
+
+    val (infoBids, resBids) = postToSnapBids(csv)
+    logs.setValue(
+      LogItem(System.currentTimeMillis, "Bids transferred to mage: " + resBids + "(" + infoBids + ")", Nil, Nil, Nil)
+        :: logs.getValue.asInstanceOf[List[LogItem]])
   }
 
   def getLogs: List[LogItem] = {
-    LogItem(System.currentTimeMillis, "Latest response: \n" + output.getValue, Nil, Nil, Nil) :: logs.getValue.asInstanceOf[List[LogItem]]
+    LogItem(System.currentTimeMillis,
+      "Latest response: \n" + output.getValue, Nil, Nil, Nil) ::
+      logs.getValue.asInstanceOf[List[LogItem]]
   }
 
   def addLogEntry: Unit = {
@@ -542,7 +547,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
   }
 
-  def postToSnapBids(csv: Array[String]): String = {
+  def postToSnapBids(csv: Array[String]): (String, Int) = {
     val bidPriceMultiplierValue: Double = Double.unbox(bidPriceMultiplier.getValue)
     val minBidPriceValue: Double = Double.unbox(minBidPrice.getValue)
     val maxBidPriceValue: Double = Double.unbox(maxBidPrice.getValue)
@@ -572,14 +577,14 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
             handleEx(x, "updatePropertiesFromPropsAndSaveToFile")
           }
         }
-        res
+        (res, lines.length - 1)
       } catch {
         case e: Throwable =>
           handleEx(e, "postToSnapBids with mult " + bidPriceMultiplierValue)
-          ""
+          ("Error: " + e.getMessage, 0)
       }
     } else {
-      ""
+      ("bidPriceMultiplier was zero", 0)
     }
   }
 

@@ -57,8 +57,8 @@ class BidsFromCsvTest {
     var csvFiltered = m.filterBids(csv).length
     Assert.assertEquals("all cards filtered out", 1, csvFiltered)
 
-    var items = m.postToSnapBids(csv)
-    Assert.assertEquals("", items)
+    val (items, _) = m.postToSnapBids(csv)
+    Assert.assertEquals("bidPriceMultiplier was zero", items)
 
     m.bidPriceMultiplier.setValue(0.5)
     m.minBidPrice.setValue(0.00)
@@ -67,9 +67,9 @@ class BidsFromCsvTest {
     csvFiltered = m.filterBids(csv).length
     Assert.assertNotEquals(1, csvFiltered)
 
-    items = m.postToSnapBids(csv)
-    println("Res: " + items)
-    Assert.assertNotEquals("", items)
+    val (items2, _) = m.postToSnapBids(csv)
+    println("Res: " + items2)
+    Assert.assertNotEquals("", items2)
     /*
     OK:
     https://dev.snapcardster.com/importer/sellerdata/bidsFromCsv/3 response code:200

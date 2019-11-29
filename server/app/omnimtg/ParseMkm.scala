@@ -40,14 +40,17 @@ object ParseMkm {
 
   def parseLanguage(str: String): Int = {
     val number = str.toInt
-    allLanguagesData.find(_.id == number).get.id
+    allLanguagesData.find(_.id == number)
+      .getOrElse(sys.error("no mkm language: " + str)).id
   }
 
   def parseCondition(str: String): Int = {
-    allConditionsData.find(_.twoLetterCode == str).get.id
+    allConditionsData.find(_.twoLetterCode == str)
+      .getOrElse(sys.error("no mkm condition: " + str)).id
   }
 
   def parseFoil(str: String): Boolean = {
-    allFoilsData.find(_.mkmCode == str).get.value
+    allFoilsData.find(_.mkmCode == str)
+      .getOrElse(sys.error("no mkm foil: " + str)).value
   }
 }
