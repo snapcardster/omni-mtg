@@ -107,12 +107,18 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
         List(
           ("bidPriceMultiplier", mc.bidPriceMultiplier.getValue, x.bidPriceMultiplier),
           ("askPriceMultiplier", mc.askPriceMultiplier.getValue, x.askPriceMultiplier),
+          ("minBidPrice", mc.minBidPrice.getValue, x.minBidPrice),
+          ("maxBidPrice", mc.maxBidPrice.getValue, x.maxBidPrice),
           ("bidLanguages", mc.bidLanguages, x.bidLanguages),
           ("bidConditions", mc.bidConditions, x.bidConditions),
           ("bidFoils", mc.bidFoils, x.bidFoils)
         ).filter(x => x._2 != x._3)
 
       mc.bidPriceMultiplier.setValue(x.bidPriceMultiplier)
+
+      mc.minBidPrice.setValue(x.minBidPrice)
+      mc.maxBidPrice.setValue(x.maxBidPrice)
+
       mc.askPriceMultiplier.setValue(x.askPriceMultiplier)
 
       mc.bidLanguages = x.bidLanguages

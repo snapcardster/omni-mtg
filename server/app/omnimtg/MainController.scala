@@ -328,14 +328,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         readableChanges(items)
 
     sb.append("• MKM to Snapcardster, changes at Snapcardster:\n" + info)
-    output.setValue(sb.toString)
-
-    addLogEntry
 
     val (infoBids, resBids) = postToSnapBids(csv)
-    logs.setValue(
-      LogItem(System.currentTimeMillis, "Bids transferred to mage: " + resBids + "(" + infoBids + ")", Nil, Nil, Nil)
-        :: logs.getValue.asInstanceOf[List[LogItem]])
+    val bidInfo = "Bid csv transferred: " + resBids + " (" + infoBids + ")"
+    output.setValue(sb.toString + "\n" + bidInfo)
+
+    addLogEntry(infoBids, resBids)
+
   }
 
   def getLogs: List[LogItem] = {
@@ -344,9 +343,14 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       logs.getValue.asInstanceOf[List[LogItem]]
   }
 
-  def addLogEntry: Unit = {
+  def addLogEntry(infoBids: String, resBids: Int): Unit = {
+
+    val item = LogItem(System.currentTimeMillis,
+      output.getValue, deletedList, changedList, addedList)
+
     if (deletedList.nonEmpty || changedList.nonEmpty || addedList.nonEmpty) {
-      val item = LogItem(System.currentTimeMillis, output.getValue, deletedList, changedList, addedList)
+      logs.setValue(item :: logs.getValue.asInstanceOf[List[LogItem]])
+    } else if (resBids != 0) {
       logs.setValue(item :: logs.getValue.asInstanceOf[List[LogItem]])
     }
   }
@@ -562,12 +566,15 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
           // instead of letting the backend do that
         ))
 
+
         println("post bids: " + lines.length + " lines of csv, first card line:\n" + lines.drop(1).headOption.getOrElse(""))
 
         val res = snapConnector.call(snapCsvBidEndpoint, "POST", getAuth, body)
         val currentBidCreateOptions =
           "mult" + bidPriceMultiplierValue + ",min" + minBidPriceValue + ",max" + maxBidPriceValue +
             "bidFoils" + bidFoils + ",bidLanguages" + bidLanguages + "bidConditions" + bidConditions
+
+        println("filter bids from " + csv.length + " to " + lines.length + " with " + currentBidCreateOptions)
 
         if (currentBidCreateOptions != lastBidCreateOptions) {
           lastBidCreateOptions = currentBidCreateOptions
