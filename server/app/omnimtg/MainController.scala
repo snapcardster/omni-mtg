@@ -790,20 +790,30 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
           if (x.contains("Magic Single")) {
             val parts = x.split("\",\"")
             val enName = parts(1)
-            val idExpansion = parts(4).toLong
-            val entry =
-              MKMProductEntry(
-                idProduct = parts(0).substring(1).toLong,
-                enName = enName,
-                idExpansion = idExpansion,
-                expansionName = expansionLookup.getOrElse(idExpansion, "")
-              )
-            val list =
-              entry :: (cardNameToSets.get(enName) match {
-                case Some(value) => value
-                case None => Nil
-              })
-            cardNameToSets.put(enName, list)
+
+            Try(parts(4).toLong) match {
+              case Failure(exception) =>
+                handleEx(exception, "productsfile part 4 line " + x)
+              case Success(idExpansion) =>
+                Try(parts(0).substring(1).toLong) match {
+                  case Failure(exception) =>
+                    handleEx(exception, "productsfile part 0 line " + x)
+                  case Success(idProd) =>
+                    val entry =
+                      MKMProductEntry(
+                        idProduct = idProd,
+                        enName = enName,
+                        idExpansion = idExpansion,
+                        expansionName = expansionLookup.getOrElse(idExpansion, "")
+                      )
+                    val list =
+                      entry :: (cardNameToSets.get(enName) match {
+                        case Some(value) => value
+                        case None => Nil
+                      })
+                    cardNameToSets.put(enName, list)
+                }
+            }
           }
         }
 
@@ -1057,7 +1067,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val ex = nativeProvider.saveToFile(
       File.separatorChar + "logs" + File.separatorChar + "xml-" + tagName + "-" + System.currentTimeMillis + ".xml", xml, null
     )
-    if (ex == null) {
+    if (ex != null) {
       println("Failed writing info xml: " + ex)
     }
 
