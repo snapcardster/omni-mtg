@@ -691,7 +691,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def refreshLookupIfNeeded(mkm: M11DedicatedApp, csv: Array[String]): Unit = {
-    val problemCards = List("Fallen Empires") // TODO
+    val problemCards = List("Fallen Empires", "Antiquities", "Homelands", "Alliances")
 
     val productIdsFromCsvThatNeedLookup =
       csv.flatMap { x =>
