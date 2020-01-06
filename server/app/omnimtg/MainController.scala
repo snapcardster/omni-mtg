@@ -22,6 +22,7 @@ import scala.collection.mutable.ListBuffer
 case class LogItem(timestamp: Long, text: String, deleted: List[String], changed: List[String], added: List[String])
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
+  val REMOVE_FROM_CSV: String = "REMOVE_FROM_CSV"
 
   var bidLanguages: List[Int] = Nil
   var bidConditions: List[Int] = Nil
@@ -628,6 +629,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       if (line == null) {
         abort = true
       } else {
+        /*if (line.contains("High Tide")) {
+          println("VERSION " + line)
+        }*/
         content.add(line)
       }
     }
@@ -650,16 +654,35 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     productIds.toSeq.flatMap { id =>
       if (mkmReqTimoutable(mkmProductEndpoint + "/" + id, "GET", (url, method) =>
         mkm.request(url, method, null, null, true))) {
-        val number =
+        val prodNode =
           xmlList(getXml(mkm.responseContent).getFirstChild.getChildNodes)
-            .find(x => x.getNodeName == "product").flatMap(x =>
-            xmlList(x.getChildNodes).find(x => x.getNodeName == "number")
-              .map(_.getTextContent))
+            .find(x => x.getNodeName == "product")
+        val number =
+          prodNode.flatMap { x =>
+            xmlList(x.getChildNodes)
+              .find(x => x.getNodeName == "number")
+              .map(_.getTextContent)
 
-        //        println(productIdsForExtras.head + ":=>>" + number)
-        number.map { num =>
-          idProductToCollectorNumber.put(id, num)
-          1
+          }
+
+        val isVersionCard =
+          prodNode.flatMap { x =>
+            xmlList(x.getChildNodes)
+              .find(x => x.getNodeName == "enName")
+              .map(_.getTextContent.contains(" (Version "))
+          }.getOrElse(false)
+
+        if (Config.isVerbose) {
+          println("Prod " + id + " => coll num <" + number + "> / version card " + isVersionCard)
+        }
+        if (isVersionCard) {
+          idProductToCollectorNumber.put(id, REMOVE_FROM_CSV)
+          None
+        } else {
+          number.map { num =>
+            idProductToCollectorNumber.put(id, num)
+            1
+          }
         }
       } else {
         None
@@ -668,11 +691,20 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def refreshLookupIfNeeded(mkm: M11DedicatedApp, csv: Array[String]): Unit = {
+    val problemCards = List("Fallen Empires") // TODO
+
     val productIdsFromCsvThatNeedLookup =
       csv.flatMap { x =>
         val parts = x.split(splitter)
         val idProduct = Try(parts(1).toLong)
+
         if (idProduct.isSuccess && ambiguousProductIdLookup.get.contains(idProduct.get)) {
+          Some(idProduct.get)
+        } else if (idProduct.isSuccess && problemCards.contains(parts(5))) {
+          // idProductToCollectorNumber.put(idProduct.get, REMOVE_FROM_CSV)
+          if (Config.isVerbose) {
+            println("Problem Set, will investigate cards from <" + parts(5) + ">")
+          }
           Some(idProduct.get)
         } else {
           None
@@ -763,11 +795,15 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
       val editionsJson = mkm.responseContent
 
-      println("editionsJson" + editionsJson)
+      if (Config.isVerbose) {
+        println("editionsJson" + editionsJson)
+      }
 
       val expansions: MKMExpansions = new Gson().fromJson(editionsJson, classOf[MKMExpansions])
       //      System.out.println(obj.toString)
-      println("editions" + expansions)
+      if (Config.isVerbose) {
+        println("editions" + expansions)
+      }
 
       val expansionLookup: Map[Long, String] = expansions.expansion.map(x =>
         x.idExpansion -> x.enName
@@ -785,40 +821,51 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         //"idProduct","Name","Category ID","Category","Expansion ID","Metacard ID","Date Added"
         //"1","Altar's Light","1","Magic Single","45","129","2007-01-01 00:00:00"
         val strings = unzipB64StringAndGetLines(result)
+
+        // TODO: set to false, useful for debugging
+        val karstenTest = false
+        if (karstenTest) {
+          val stream = new FileOutputStream(Paths.get("products.csv").toFile)
+          stream.write(strings.mkString("\n").getBytes)
+          stream.flush()
+          stream.close()
+        }
+
         val cardNameToSets = new mutable.HashMap[String, List[MKMProductEntry]]()
         strings.foreach { x =>
           if (x.contains("Magic Single")) {
             val parts = x.split("\",\"")
             val enName = parts(1)
-
-            Try(parts(4).toLong) match {
-              case Failure(exception) =>
-                handleEx(exception, "productsfile part 4 line " + x)
-              case Success(idExpansion) =>
-                Try(parts(0).substring(1).toLong) match {
-                  case Failure(exception) =>
-                    handleEx(exception, "productsfile part 0 line " + x)
-                  case Success(idProd) =>
-                    val entry =
-                      MKMProductEntry(
-                        idProduct = idProd,
-                        enName = enName,
-                        idExpansion = idExpansion,
-                        expansionName = expansionLookup.getOrElse(idExpansion, "")
-                      )
-                    val list =
-                      entry :: (cardNameToSets.get(enName) match {
-                        case Some(value) => value
-                        case None => Nil
-                      })
-                    cardNameToSets.put(enName, list)
-                }
+            if (parts(4) != "") {
+              Try(parts(4).toLong) match {
+                case Failure(exception) =>
+                  handleEx(exception, "productsfile part 4 line " + x)
+                case Success(idExpansion) =>
+                  Try(parts(0).substring(1).toLong) match {
+                    case Failure(exception) =>
+                      handleEx(exception, "productsfile part 0 line " + x)
+                    case Success(idProd) =>
+                      val entry =
+                        MKMProductEntry(
+                          idProduct = idProd,
+                          enName = enName,
+                          idExpansion = idExpansion,
+                          expansionName = expansionLookup.getOrElse(idExpansion, "")
+                        )
+                      val list =
+                        entry :: (cardNameToSets.get(enName) match {
+                          case Some(value) => value
+                          case None => Nil
+                        })
+                      cardNameToSets.put(enName, list)
+                  }
+              }
             }
           }
         }
 
         val withMoreThanOneSet = cardNameToSets.filter(_._2.size > 1)
-        //println(withMoreThanOneSet.mkString("\n"))
+        //+println(withMoreThanOneSet.mkString("\n"))
 
         val idProductToExpansions: Map[Long, List[String]] =
           withMoreThanOneSet.flatMap { case (key, value) =>
@@ -888,8 +935,14 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         None
       } else if (idProduct == "idProduct")
         Some(result + ";\"collectorNumber\"")
-      else
-        Some(result + idProductToCollectorNumber.get(idProduct.toLong).map(x => ";\"" + x + "\"").getOrElse(";\"\""))
+      else {
+        val collectorNumberMaybe = idProductToCollectorNumber.get(idProduct.toLong)
+        if (collectorNumberMaybe.contains(REMOVE_FROM_CSV)) {
+          None
+        } else {
+          Some(result + ";\"" + collectorNumberMaybe.getOrElse("") + "\"")
+        }
+      }
     }
 
     csvWithCol
