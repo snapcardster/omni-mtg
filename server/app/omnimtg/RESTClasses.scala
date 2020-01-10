@@ -37,7 +37,7 @@ case class ScryfallCard(name: String)
 case class SellerDataChanged(
                               `type`: String,
                               externalId: Long,
-                              collectionId: Long,
+                              collectionId: java.lang.Long,
                               info: CsvFormat
                             )
 
@@ -45,12 +45,24 @@ case class MKMCsv(
                    fileName: String,
                    fileContent: String,
                    bidPriceMultiplier: java.lang.Double = null,
-                   minBidPrice:java.lang.Double = null,
+                   minBidPrice: java.lang.Double = null,
                    maxBidPrice: java.lang.Double = null,
                    askPriceMultiplier: java.lang.Double = null
                  )
 
-case class ImportConfirmation(collectionId: Long, successful: Boolean, added: Boolean, info: String)
+case class ImportConfirmation(
+                               collectionId: Long,
+                               successful: Boolean,
+                               added: Boolean,
+                               info: String
+                             )
+
+case class MkmConfirm(
+                       externalId: Long,
+                       count: Int,
+                       successful: Boolean,
+                       message: String
+                     )
 
 case class CsvFormat(
                       qty: Int,

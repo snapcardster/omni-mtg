@@ -35,16 +35,16 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     })
   }
 
-  val title: String = "Omni MTG Sync Tool 2019-11-28 [Headless Server]"
+  val title: String = "Omni MTG Sync Tool 2020-01-09 [Server]"
 
   // when scryfall deployed: 3, before: 2
   val snapApiVersion: String = "3"
 
   // TODO: change back to test after test
   var snapBaseUrl: String = "https://api.snapcardster.com"
-  //val snapBaseUrl: String = "https://dev.snapcardster.com"
-  //val snapBaseUrl: String =  "https://test.snapcardster.com"
-  //val snapBaseUrl: String = "http://localhost:9000"
+  //var snapBaseUrl: String = "https://dev.snapcardster.com"
+  //var snapBaseUrl: String =  "https://api2.snapcardster.de"
+  //var snapBaseUrl: String = "http://localhost:9000"
 
   val CHANGED: String = "changed"
   val ADDED: String = "added"
@@ -170,6 +170,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
 
     readProperties(nativeBase)
+    println("snapBaseUrl is " + snapBaseUrl)
 
     val keysWithLen = keys.map(k => k + "-size: " + Option(prop.getProperty(k)).getOrElse("").length).mkString(", ")
 
@@ -385,13 +386,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     val list = getChangeItems(json)
 
-    val removedOrReservedItems = list.flatMap { parts =>
-      if (parts.`type` == REMOVED || parts.`type` == RESERVED) {
-        List(parts)
-      } else {
-        Nil
+    val removedOrReservedItems: Array[SellerDataChanged] =
+      list.filter { parts =>
+        parts.`type` == REMOVED || parts.`type` == RESERVED
       }
-    }
 
     val readableRemove = readableChanges(removedOrReservedItems)
     info.append(
@@ -415,7 +413,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       info.append("  " + res + "\n")
       output.setValue(info.toString)
     } else {
-      println("Error: deleteFromMkmStock => " + resDel.failed.get)
+      println("Error: deleteFromMkmStock for " + snapUser.getValue + " => " + resDel.failed.get)
     }
 
     val addedItems = list.flatMap { parts =>
@@ -971,26 +969,53 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     val mkm = getMkm
 
+    val entriesGrouped = entries.groupBy(_.externalId).toSeq
     val body = // NO SPACE at beginning, this is important
       s"""<?xml version="1.0" encoding="utf-8"?>
       <request>
       ${
-        entries.map(entry =>
+        entriesGrouped.map(group =>
           s"""
             <article>
-              <idArticle>${entry.externalId}</idArticle>
-              <count>1</count>
+              <idArticle>${group._1}</idArticle>
+              <count>${group._2.length}</count>
             </article>
             """
         ).mkString("")
       }
       </request>
       """
+
     val hasOutput = false
     if (!mkmReqTimoutable(mkmStockEndpoint, "DELETE", (url, method) =>
       mkm.request(url, method, body, "application/xml", hasOutput))) {
       handleEx(mkm.lastError, entries)
+
+      // try again later, API may be blocked or down,
+      // it's important to successfully delete the offers from the mkm stock,
+      // otherwise we cannot guarantee unique sales, if there's an issue with cardmarket api,
+      // we need to know, so I'll log these occurrences to keep track of such cases (happens above)
       Left(getErrorString(mkm))
+
+      // If an api error should lead to remove from snap, this applies:
+
+      // we cannot process an error here (or in the caller),
+      // we should still respond to snap server with need to remove
+      // even if cardmarket is fully offline, this will in result in a lot of deletes at mage
+      // potentially, but since these are only soft deletes and they came from
+      // purchases at mage in the first place, this is ok - they will be added again, if the sync is
+      // online again. Short side note: If they should be deleted from mkm but cannot,
+      // they will be added to mage again and again - without any way around.
+      /*Right(
+        entries.map { sellerDataChanged =>
+          ImportConfirmation(
+            sellerDataChanged.collectionId,
+            success = false, added = false,
+            info = "needToRemoveFromSnapcardster"
+          )
+        }
+      )*/
+
     } else {
       Right(getConfirmationRaw(mkm.responseContent, "deleted", entries, added = false))
     }
@@ -1132,12 +1157,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         Nil
     }
 
-    val buf = new ListBuffer[SellerDataChanged]
-    buf.append(entriesInRequest: _*)
-
-    val xmlItems: Seq[ImportConfirmation] = tags.flatMap { x =>
+    val mkmConfirms: Seq[MkmConfirm] = tags.map { x =>
       val xs = xmlList(x.getChildNodes)
-      val success = java.lang.Boolean.parseBoolean(xs.find(_.getNodeName == "success").get.getTextContent)
+      val successful = java.lang.Boolean.parseBoolean(xs.find(_.getNodeName == "success").get.getTextContent)
       val message = xs.find(_.getNodeName == "message").map(_.getTextContent)
       val value = xs.find(_.getNodeName == "idArticle")
       // val englishName = xs.find(_.getNodeName == "engName").map(_.getTextContent)
@@ -1147,54 +1169,34 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         if (ch.size == 1 && ch.head.getNodeType == Node.TEXT_NODE) {
           ch.head.getTextContent.toLong
         } else {
-          ch.find(_.getNodeName == "idArticle").map(_.getTextContent.toLong).getOrElse(-1)
+          ch.find(_.getNodeName == "idArticle").map(_.getTextContent.toLong).getOrElse(-1L)
         }
+      val count =
+        ch.find(_.getNodeName == "count").map(_.getTextContent.toInt).getOrElse(0)
 
-      val index = buf.indexWhere(b => b.externalId == idArticle)
 
-      val collId: java.lang.Long =
-        if (index == -1) {
-          println("The element with id " + idArticle + " is not fund in mkm xml, success was: " + success + ", message: " + message)
-          -1l
-        } else {
-          val item = buf(index)
-          // We remove the element after finding it to prevent duplicate findings
-          // (one idArticle maps to many collection ids)
-          buf.remove(index)
-          item.collectionId
-        }
+      if (message.nonEmpty) {
+        println("getConfirmationRaw" + tagName.toUpperCase + " had message for " + idArticle + ": " + message.get + ", successful: " + successful)
+      }
 
-      val mapEntry =
-        if (collId == -1) {
-          None
-        } else {
-          if (message.isDefined) {
-            Some(ImportConfirmation(collId, success, added, message.get))
-          } else {
-            Some(ImportConfirmation(collId, success, added, null))
-          }
-        }
-      mapEntry
+      MkmConfirm(
+        externalId = idArticle,
+        count = count,
+        successful = successful,
+        message = message.getOrElse("")
+      )
     }
 
-    // If there are entries left without a matching item, they got a new articleId and must be removed and (in the next sync) new inserted to snapcardster
-    val needToRemove: Array[ImportConfirmation] =
-      if (added) {
-        entriesInRequest.filter(e =>
-          !xmlItems.exists(i =>
-            i.collectionId == (if (e.collectionId == null) -1 else e.collectionId)
-          )).map { x =>
-          ImportConfirmation(
-            if (x.collectionId == null) -1 else x.collectionId,
-            successful = false,
-            added = added,
-            "needToRemoveFromSnapcardster"
-          )
-        }.toArray
-      } else {
-        Array()
-      }
-    (xmlItems ++ needToRemove).toArray
+    val resultItems = entriesInRequest.map { entry =>
+      val x = mkmConfirms.find(_.externalId == entry.externalId)
+
+      val success = x.exists(_.successful)
+      ImportConfirmation(entry.collectionId, success, added,
+        if (!success && !added) "needToRemoveFromSnapcardster" else ""
+      )
+    }
+
+    resultItems.toArray
   }
 
   def getOversizedCardNames: Array[String] = {
