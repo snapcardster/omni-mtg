@@ -153,7 +153,10 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
       }).start
     }
 
-    mc.request.setValue(() => System.exit(retCode))
+    mc.request.setValue(new Runnable {
+      override def run(): Unit =
+        System.exit(retCode)
+    })
     mc.running.setValue(false)
 
     Future(Ok(Json.toJson(Seq(
