@@ -689,7 +689,13 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def refreshLookupIfNeeded(mkm: M11DedicatedApp, csv: Array[String]): Unit = {
-    val problemCards = List("Fallen Empires", "Antiquities", "Homelands", "Alliances")
+    val problemCardEditions = List(
+      "Fallen Empires", "Antiquities", "Homelands", "Alliances"
+    )
+    val problemCardNames = List(
+      "Brothers Yamazaki"
+    )
+
 
     val productIdsFromCsvThatNeedLookup =
       csv.flatMap { x =>
@@ -698,7 +704,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
         if (idProduct.isSuccess && ambiguousProductIdLookup.get.contains(idProduct.get)) {
           Some(idProduct.get)
-        } else if (idProduct.isSuccess && problemCards.contains(parts(5))) {
+        } else if (idProduct.isSuccess && (
+          problemCardEditions.contains(parts(5)) || problemCardNames.contains(parts(2))
+          )) {
           // idProductToCollectorNumber.put(idProduct.get, REMOVE_FROM_CSV)
           if (Config.isVerbose) {
             println("Problem Set, will investigate cards from <" + parts(5) + ">")
@@ -1176,7 +1184,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
 
       if (message.nonEmpty) {
-        println("getConfirmationRaw" + tagName.toUpperCase + " had message for " + idArticle + ": " + message.get + ", successful: " + successful)
+        println("getConfirmationRaw " + tagName.toUpperCase + " had message for " + idArticle + ": " + message.get + ", successful: " + successful)
       }
 
       MkmConfirm(

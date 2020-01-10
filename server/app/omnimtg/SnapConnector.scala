@@ -18,13 +18,13 @@ class SnapConnector(func: NativeFunctionProvider) {
 
   def callCore(requestURL: String, method: String, auth: String = null, body: String = null): String = {
     func.println(
-      auth + ", " + method + ": " + requestURL + ", " +
+      method + ": " + requestURL + ", Auth: " + auth + ", " +
         (if (body == null) "no body" else "body is a string of length " + body.length)
     )
     val connection: HttpURLConnection = new URL(requestURL).openConnection.asInstanceOf[HttpURLConnection]
     if (auth != null) {
       connection.addRequestProperty("Authorization", auth)
-      func.println("Auth:" + auth)
+      //func.println("Auth:" + auth)
     }
     if (body != null) {
       connection.setRequestProperty("Content-Type", "application/json")
@@ -52,7 +52,7 @@ class SnapConnector(func: NativeFunctionProvider) {
     connection.connect()
 
     val lastCode = connection.getResponseCode
-    func.println(requestURL + " response code:" + lastCode)
+    func.println(method + " " + requestURL + " response code:" + lastCode)
 
     val str =
       if (lastCode == 200)
