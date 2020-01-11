@@ -1198,9 +1198,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val resultItems = entriesInRequest.map { entry =>
       val x = mkmConfirms.find(_.externalId == entry.externalId)
 
-      val success = x.exists(_.successful)
+      val success = if(!added) false else x.exists(_.successful)
+      // we need succes = false for deletions
       ImportConfirmation(entry.collectionId, success, added,
-        if (!success && !added) "needToRemoveFromSnapcardster" else ""
+        if (!added) "needToRemoveFromSnapcardster" else ""
       )
     }
 
