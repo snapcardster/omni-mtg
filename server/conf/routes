@@ -4,5 +4,6 @@ GET         /status             controllers.ServerMainController.getStatus
 GET         /settings           controllers.ServerMainController.getSettings
 POST        /settings           controllers.ServerMainController.postSettings
 POST        /exitRequest        controllers.ServerMainController.postExitRequest
+POST        /exit               controllers.ServerMainController.postExit
 
 #GET /docs controllers.SwaggerController

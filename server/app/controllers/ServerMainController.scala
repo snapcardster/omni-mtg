@@ -173,6 +173,16 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
     }
   }
 
+  def postExit(): Action[AnyContent] = Action.async {
+    val retCode = 1337
+    fun.println("Exit now with " + retCode)
+    Thread.sleep(100)
+    System.exit(retCode)
+    Future(Ok(Json.toJson(Seq(
+      "Ok, you probably won't see this, call status and see it I'm still here"
+    ))))
+  }
+
   def postExitRequest(): Action[AnyContent] = Action.async {
     val retCode = 42
     var when = "exit is scheduled"
