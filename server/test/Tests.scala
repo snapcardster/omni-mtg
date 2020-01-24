@@ -44,7 +44,7 @@ class Tests {
 
   @Test
   def test3(): Unit = {
-    val requestURL = "https://api.snapcardster.com/update/cardDetails"
+    val requestURL = "https://api.snapcardster.com/update/newCardDetails"
     val auth = "Pre-Launch-Test,9dd98c19dd6d0a83ee58e5f0020679a62320d22f307bc39ea90cdbffb66386d0"
     val method = "GET"
     val body = null
@@ -67,7 +67,7 @@ class Tests {
 
   @Test
   def test4(): Unit = {
-    val requestURL = "https://api.snapcardster.com/update/cardDetails"
+    val requestURL = "https://api.snapcardster.com/update/newCardDetails"
     val auth = "Pre-Launch-Test,9dd98c19dd6d0a83ee58e5f0020679a62320d22f307bc39ea90cdbffb66386d0"
     val method = "GET"
     val body = null

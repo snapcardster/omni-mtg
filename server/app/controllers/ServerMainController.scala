@@ -1,15 +1,25 @@
 package controllers
 
+import java.text.SimpleDateFormat
+
 import javax.inject._
+
 import play.api.libs.json._
 import play.api.mvc._
 import omnimtg._
 import omnimtg.Interfaces._
+import scala.collection._
 import play.api.Logger
-
 import scala.concurrent.{ExecutionContext, Future}
 
-case class JsStatus(timeToNextSyncInSec: Int, running: Boolean, inSync: Boolean)
+case class JsStatus(
+                     timeToNextSyncInSec: Int,
+                     running: Boolean,
+                     inSync: Boolean,
+                     snapCallsSoFar: Option[Int],
+                     mkmCallsSoFar: Option[Int],
+                     callInfo: Option[String]
+                   )
 
 object JsStatus {
   implicit val r: Reads[JsStatus] = Json.reads[JsStatus]
@@ -54,11 +64,34 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   fun.println("Version: " + mc.title + "\n")
   mc.startServer(null)
 
+  var now: String = getNow()
+  var map: mutable.TreeMap[String, String] = mutable.TreeMap()
+
+  def getNow(): String = {
+    val sdf = new SimpleDateFormat("yyyy-MM-dd")
+    sdf.format(new java.util.Date())
+  }
+
   def getStatus: Action[AnyContent] = Action.async {
+    val newNow = getNow()
+    if (newNow != now) {
+
+      val snap = mc.snapCallsSoFar.getValue()
+      val mkm = mc.mkmCallsSoFar.getValue()
+      map.put(now, "mage=" + snap + ", mkm=" + mkm)
+
+      mc.snapCallsSoFar.setValue(0)
+      mc.mkmCallsSoFar.setValue(0)
+    }
+
     Future(Ok(Json.toJson(JsStatus(
       timeToNextSyncInSec = mc.nextSync.getValue,
       running = mc.running.getValue,
-      inSync = mc.inSync.getValue
+      inSync = mc.inSync.getValue,
+
+      snapCallsSoFar = Some(mc.snapCallsSoFar.getValue),
+      mkmCallsSoFar = Some(mc.mkmCallsSoFar.getValue),
+      callInfo = Some(map.map(x => x._1 + ": " + x._2).mkString("\n"))
     ))))
   }
 
@@ -83,7 +116,7 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
     implicit val w: Writes[LogItem] = Json.writes[LogItem]
     //}
 
-    Future(Ok(Json.toJson(mc.logs.getValue.asInstanceOf[List[LogItem]])))
+    Future(Ok(Json.toJson(mc.getLogs)))
   }
 
   def parseJs[T](req: Request[AnyContent], rds: Reads[T])(f: T => Future[Result]): Future[Result] = {

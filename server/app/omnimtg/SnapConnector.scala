@@ -5,7 +5,10 @@ import java.io._
 import java.net.{HttpURLConnection, URL}
 
 class SnapConnector(func: NativeFunctionProvider) {
-  def call(requestURL: String, method: String, auth: String = null, body: String = null): String = {
+  def call(mc:MainController, requestURL: String, method: String, auth: String = null, body: String = null): String = {
+
+    mc.snapCallsSoFar.setValue(mc.snapCallsSoFar.getValue + 1)
+
     val timeoutMs = Config.getTimeout
 
     val timeout = TimeoutWatcher(timeoutMs, () =>

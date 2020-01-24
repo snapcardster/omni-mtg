@@ -92,6 +92,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   val minBidPrice: DoubleProperty = propFactory.newDoubleProperty("minBidPrice", 0.0, prop)
   val maxBidPrice: DoubleProperty = propFactory.newDoubleProperty("maxBidPrice", 0.0, prop)
   val askPriceMultiplier: DoubleProperty = propFactory.newDoubleProperty("askPriceMultiplier", 1.0, prop)
+  val snapCallsSoFar: IntegerProperty = propFactory.newIntegerProperty("snapCallsSoFar", 0, prop)
+  val mkmCallsSoFar: IntegerProperty = propFactory.newIntegerProperty("snapCallsSoFar", 0, prop)
 
   val snapPassword: StringProperty = propFactory.newStringProperty("snapPassword", "", prop)
   val snapToken: StringProperty = propFactory.newStringProperty("snapToken", "", prop)
@@ -218,7 +220,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     output.setValue(outputPrefix() + "Logging in to Snapcardster...")
     val body = s"""{\"userId\":\"${snapUser.getValue}\",\"password\":\"${snapPassword.getValue}\"}"""
     output.setValue(outputPrefix() + body)
-    val res = snapConnector.call(snapLoginEndpoint, "POST", body = body)
+    val res = snapConnector.call(this, snapLoginEndpoint, "POST", body = body)
     if (res == null) {
       snapToken.setValue("")
     } else {
@@ -251,12 +253,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
             try {
               inSync.setValue(true)
               sync(nativeBase)
-              inSync.setValue(false)
             } catch {
-              case e: Exception =>
+              case e: Throwable =>
                 handleEx(e)
-                inSync.setValue(false)
             }
+            inSync.setValue(false)
+
             request.getValue match {
               case r: Runnable => r.run()
               case null => () // ok, runnable or nothing
@@ -312,7 +314,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val sb = new StringBuilder
     val res1 = loadSnapChangedAndDeleteFromStock(sb)
 
-    sb.append("Loading MKM stock...\n")
+    sb.append("Sync run " + new Date() + ". Loading MKM stock...\n")
     csv = loadMkmStock(getMkm)
     sb.append("  " + csv.length + " lines read from mkm stock\n")
     output.setValue(sb.toString)
@@ -347,14 +349,18 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   def addLogEntry(infoBids: String, resBids: Int): Unit = {
 
-    val item = LogItem(System.currentTimeMillis,
-      output.getValue, deletedList, changedList, addedList)
+    val item = currentLogItem
 
     if (deletedList.nonEmpty || changedList.nonEmpty || addedList.nonEmpty) {
       logs.setValue(item :: logs.getValue.asInstanceOf[List[LogItem]])
     } else if (resBids != 0) {
       logs.setValue(item :: logs.getValue.asInstanceOf[List[LogItem]])
     }
+  }
+
+  def currentLogItem() = {
+    LogItem(System.currentTimeMillis,
+      output.getValue, deletedList, changedList, addedList)
   }
 
   def readableChanges(items: Seq[SellerDataChanged]): String = {
@@ -378,13 +384,16 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     new Date() + "\n"
   }
 
+  val alreadyAddedSet =
+    mutable.HashSet[Long]()
+
   def loadSnapChangedAndDeleteFromStock(info: StringBuilder): StringBuilder = {
     info.append(outputPrefix() + "• Snapcardster to MKM, changes at MKM:\n")
     val json = loadChangedFromSnap()
 
     println(snapChangedEndpoint + "\n" + json)
 
-    val list = getChangeItems(json)
+    val list: Array[SellerDataChanged] = getChangeItems(json)
 
     val removedOrReservedItems: Array[SellerDataChanged] =
       list.filter { parts =>
@@ -409,20 +418,40 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     if (resDel.isSuccess) {
       val body = if (resDel.get.isEmpty) "[]" else resDel.get
-      val res = snapConnector.call(snapChangedEndpoint, "POST", getAuth, body)
+      val res = snapConnector.call(this, snapChangedEndpoint, "POST", getAuth, body)
       info.append("  " + res + "\n")
       output.setValue(info.toString)
     } else {
       println("Error: deleteFromMkmStock for " + snapUser.getValue + " => " + resDel.failed.get)
     }
 
-    val addedItems = list.flatMap { parts =>
-      if (parts.`type` == ADDED || parts.`type` == CHANGED) {
-        List(parts)
-      } else {
-        Nil
+    val addedItems0 =
+      list.flatMap { parts =>
+        if (parts.`type` == ADDED || parts.`type` == CHANGED) {
+          List(parts)
+        } else {
+          Nil
+        }
       }
-    }
+
+    val (alreadyAddedItems: Array[SellerDataChanged],
+    addedItems: Array[SellerDataChanged]) =
+      addedItems0.partition(x =>
+        alreadyAddedSet.contains(
+          x.collectionId
+        )
+      )
+
+    addedItems0.foreach(x =>
+      alreadyAddedSet.add(
+        x.collectionId
+      )
+    )
+
+    info.append(
+      "Found already added (thus skipped) " + alreadyAddedItems.length + " items...\n"
+        + alreadyAddedItems + "\n"
+    )
 
     val addedReadable = readableChanges(addedItems)
     info.append(
@@ -432,7 +461,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     output.setValue(info.toString)
 
-    val resAdd = addToMkmStock(addedItems, getMkm)
+    val resAdd =
+      addToMkmStock(addedItems, getMkm)
     info.append("  " + resAdd + "\n")
     output.setValue(info.toString)
 
@@ -440,7 +470,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     output.setValue(info.toString)
 
     val body = if (resAdd.isEmpty) "[]" else resAdd
-    val res = snapConnector.call(snapChangedEndpoint, "POST", getAuth, body)
+    val res = snapConnector.call(this, snapChangedEndpoint, "POST", getAuth, body)
 
     info.append("  " + res + "\n")
     output.setValue(info.toString)
@@ -568,7 +598,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
         println("post bids: " + lines.length + " lines of csv, first card line:\n" + lines.drop(1).headOption.getOrElse(""))
 
-        val res = snapConnector.call(snapCsvBidEndpoint, "POST", getAuth, body)
+        val res = snapConnector.call(this, snapCsvBidEndpoint, "POST", getAuth, body)
         val currentBidCreateOptions =
           "mult" + bidPriceMultiplierValue + ",min" + minBidPriceValue + ",max" + maxBidPriceValue +
             "bidFoils" + bidFoils + ",bidLanguages" + bidLanguages + "bidConditions" + bidConditions
@@ -601,12 +631,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       askPriceMultiplier = askPriceMultiplier.getValue
       // we need ask csv unchanged in case it goes back
     ))
-    val res = snapConnector.call(snapCsvEndpoint, "POST", getAuth, body)
+    val res = snapConnector.call(this, snapCsvEndpoint, "POST", getAuth, body)
     res
   }
 
   def loadChangedFromSnap(): String = {
-    val res = snapConnector.call(snapChangedEndpoint, "GET", getAuth, null)
+    val res = snapConnector.call(this, snapChangedEndpoint, "GET", getAuth, null)
     res
   }
 
@@ -1105,6 +1135,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def mkmReqTimoutable(endpoint: String, method: String, mkmRequestCall: (String, String) => Boolean): Boolean = {
+    mkmCallsSoFar.setValue(mkmCallsSoFar.getValue + 1)
     val timeoutMs = Config.getTimeout
     TimeoutWatcher(timeoutMs, () => mkmRequestCall(endpoint, method)).run.getOrElse(
       sys.error("Timeout: " + method + " " + endpoint + " did not complete within " + timeoutMs + "ms")
@@ -1198,7 +1229,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val resultItems = entriesInRequest.map { entry =>
       val x = mkmConfirms.find(_.externalId == entry.externalId)
 
-      val success = if(!added) false else x.exists(_.successful)
+      val success = if (!added) false else x.exists(_.successful)
       // we need succes = false for deletions
       ImportConfirmation(entry.collectionId, success, added,
         if (!added) "needToRemoveFromSnapcardster" else ""
