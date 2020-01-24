@@ -450,7 +450,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     info.append(
       "Found already added (thus skipped) " + alreadyAddedItems.length + " items...\n"
-        + alreadyAddedItems + "\n"
+        + readableChanges(alreadyAddedItems) + "\n"
     )
 
     val addedReadable = readableChanges(addedItems)
