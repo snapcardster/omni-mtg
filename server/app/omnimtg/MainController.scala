@@ -723,9 +723,18 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       "Fallen Empires", "Antiquities", "Homelands", "Alliances"
     )
     val problemCardNames = List(
-      "Brothers Yamazaki"
+      "Brothers Yamazaki",
+      "Izzet Guildgate",
+      "Dimir Guildgate",
+      "Selesnya Guildgate",
+      "Simic Guildgate",
+      "Azorius Guildgate",
+      "Boros Guildgate",
+      "Golgari Guildgate",
+      "Gruul Guildgate",
+      "Orzhov Guildgate",
+      "Rakdos Guildgate"
     )
-
 
     val productIdsFromCsvThatNeedLookup =
       csv.flatMap { x =>
@@ -739,7 +748,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
           )) {
           // idProductToCollectorNumber.put(idProduct.get, REMOVE_FROM_CSV)
           if (Config.isVerbose) {
-            println("Problem Set, will investigate cards from <" + parts(5) + ">")
+            println("Problem Set/Card, will investigate card " + parts(2) + " (" + parts(5) + ")")
           }
           Some(idProduct.get)
         } else {
@@ -943,11 +952,20 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   val splitter = "\";\""
 
+  val leaveOutCards = List(
+    "Mountain",
+    "Island",
+    "Plains",
+    "Forest",
+    "Swamp"
+  )
+
   def buildNewCsv(csv: Array[String]): Array[String] = {
     val csvWithCol = csv.flatMap { line =>
       val parts = line.split(splitter)
       val idProduct = parts(1)
       val cardName = parts(2)
+
       /*
           0;          1;             2;           3;     4;          5;      6; ...
 "idArticle";"idProduct";"English Name";"Local Name";"Exp.";"Exp. Name";"Price";"Language";"Condition";"Foil?";"Signed?";"Playset?";"Altered?";"Comments";"Amount";"onSale";"Collector Number"
@@ -967,7 +985,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         }
       }
       val result = partsReplaced.mkString(splitter)
-      if (oversizedNames.contains(cardName)) {
+      if (
+        leaveOutCards.contains(cardName) ||
+          oversizedNames.contains(cardName)) {
         None
       } else if (idProduct == "idProduct")
         Some(result + ";\"collectorNumber\"")
