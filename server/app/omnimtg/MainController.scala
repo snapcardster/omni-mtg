@@ -407,7 +407,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     )
 
     deletedList = makeLogList(removedOrReservedItems)
-    addedList = makeLogList(list.filter(_.`type` == ADDED))
+    addedList = Nil // TODO makeLogList(list.filter(_.`type` == ADDED))
     changedList = makeLogList(list.filter(_.`type` == CHANGED))
 
     output.setValue(info.toString)
@@ -425,6 +425,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       println("Error: deleteFromMkmStock for " + snapUser.getValue + " => " + resDel.failed.get)
     }
 
+    /*
     val addedItems0 =
       list.flatMap { parts =>
         if (parts.`type` == ADDED || parts.`type` == CHANGED) {
@@ -448,6 +449,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       )
     )
 
+    TODO
     info.append(
       "Found already added (thus skipped) " + alreadyAddedItems.length + " items...\n"
         + readableChanges(alreadyAddedItems) + "\n"
@@ -474,6 +476,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     info.append("  " + res + "\n")
     output.setValue(info.toString)
+    */
 
     info
   }
