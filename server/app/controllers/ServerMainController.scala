@@ -75,6 +75,7 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   def getStatus: Action[AnyContent] = Action.async {
     val newNow = getNow()
     if (newNow != now) {
+      now = newNow
 
       val snap = mc.snapCallsSoFar.getValue()
       val mkm = mc.mkmCallsSoFar.getValue()

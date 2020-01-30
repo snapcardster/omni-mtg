@@ -41,13 +41,14 @@ case class SellerDataChanged(
                               info: CsvFormat
                             )
 
-case class MKMCsv(
+case class MtgCsvFileRequest(
                    fileName: String,
                    fileContent: String,
                    bidPriceMultiplier: java.lang.Double = null,
                    minBidPrice: java.lang.Double = null,
                    maxBidPrice: java.lang.Double = null,
-                   askPriceMultiplier: java.lang.Double = null
+                   askPriceMultiplier: java.lang.Double = null,
+                   info: String
                  )
 
 case class ImportConfirmation(

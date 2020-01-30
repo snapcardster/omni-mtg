@@ -22,6 +22,9 @@ import scala.collection.mutable.ListBuffer
 case class LogItem(timestamp: Long, text: String, deleted: List[String], changed: List[String], added: List[String])
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
+  val title: String = "OmniMTG SyncTool 2020-01-30"
+  // TODO update version
+
   val REMOVE_FROM_CSV: String = "REMOVE_FROM_CSV"
 
   var bidLanguages: List[Int] = Nil
@@ -34,8 +37,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       case x => x
     })
   }
-
-  val title: String = "Omni MTG Sync Tool 2020-01-09 [Server]"
 
   // when scryfall deployed: 3, before: 2
   val snapApiVersion: String = "3"
@@ -407,7 +408,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     )
 
     deletedList = makeLogList(removedOrReservedItems)
-    addedList = Nil // TODO makeLogList(list.filter(_.`type` == ADDED))
+    addedList = makeLogList(list.filter(_.`type` == ADDED))
     changedList = makeLogList(list.filter(_.`type` == CHANGED))
 
     output.setValue(info.toString)
@@ -425,7 +426,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       println("Error: deleteFromMkmStock for " + snapUser.getValue + " => " + resDel.failed.get)
     }
 
-    /*
     val addedItems0 =
       list.flatMap { parts =>
         if (parts.`type` == ADDED || parts.`type` == CHANGED) {
@@ -449,7 +449,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       )
     )
 
-    TODO
     info.append(
       "Found already added (thus skipped) " + alreadyAddedItems.length + " items...\n"
         + readableChanges(alreadyAddedItems) + "\n"
@@ -476,7 +475,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
     info.append("  " + res + "\n")
     output.setValue(info.toString)
-    */
 
     info
   }
@@ -587,17 +585,17 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val bidPriceMultiplierValue: Double = Double.unbox(bidPriceMultiplier.getValue)
     val minBidPriceValue: Double = Double.unbox(minBidPrice.getValue)
     val maxBidPriceValue: Double = Double.unbox(maxBidPrice.getValue)
-    if (bidPriceMultiplierValue != 0.0) {
+    if (bidPriceMultiplierValue > 0) {
       try {
         val lines = filterBids(csv)
-        val body = new Gson().toJson(MKMCsv(
+        val body = new Gson().toJson(MtgCsvFileRequest(
           "mkmStock.csv",
           lines.mkString("\n"),
-          bidPriceMultiplier = 1.0
+          bidPriceMultiplier = 1.0,
+          info = getInfo
           // we filter csv now here and change values
           // instead of letting the backend do that
         ))
-
 
         println("post bids: " + lines.length + " lines of csv, first card line:\n" + lines.drop(1).headOption.getOrElse(""))
 
@@ -628,14 +626,19 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def postToSnap(csv: String): String = {
-    val body = new Gson().toJson(MKMCsv(
+    val body = new Gson().toJson(MtgCsvFileRequest(
       "mkmStock.csv",
       csv,
-      askPriceMultiplier = askPriceMultiplier.getValue
+      askPriceMultiplier = askPriceMultiplier.getValue,
       // we need ask csv unchanged in case it goes back
+      info = getInfo
     ))
     val res = snapConnector.call(this, snapCsvEndpoint, "POST", getAuth, body)
     res
+  }
+
+  def getInfo: String = {
+    title + " (bid: " + bidPriceMultiplier.getValue + "/" + bidLanguages.length + "/" + bidFoils.length + "/" + bidConditions.length + ", addedSize " + alreadyAddedSet.size + ")"
   }
 
   def loadChangedFromSnap(): String = {

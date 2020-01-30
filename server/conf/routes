@@ -1,4 +1,5 @@
 
+
 GET         /logs               controllers.ServerMainController.getLogs
 GET         /status             controllers.ServerMainController.getStatus
 GET         /settings           controllers.ServerMainController.getSettings
@@ -6,4 +7,6 @@ POST        /settings           controllers.ServerMainController.postSettings
 POST        /exitRequest        controllers.ServerMainController.postExitRequest
 POST        /exit               controllers.ServerMainController.postExit
 
+GET         /                   controllers.ServerMainController.getStatus
+# for server start on localhost, this is handy
 #GET /docs controllers.SwaggerController
