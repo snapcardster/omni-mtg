@@ -724,9 +724,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }.sum
   }
 
+  val IDPRODUCT = 1
+  val COMMENT = 14
+
   def refreshLookupIfNeeded(mkm: M11DedicatedApp, csv: Array[String]): Unit = {
     val problemCardEditions = List(
-      "Fallen Empires", "Antiquities", "Homelands", "Alliances"
+      "Fallen Empires", "Antiquities", "Homelands", "Alliances", "Chronicles"
     )
     val problemCardNames = List(
       "Brothers Yamazaki",
@@ -745,7 +748,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val productIdsFromCsvThatNeedLookup =
       csv.flatMap { x =>
         val parts = x.split(splitter)
-        val idProduct = Try(parts(1).toLong)
+        val idProduct = Try(parts(IDPRODUCT).toLong)
 
         if (idProduct.isSuccess && ambiguousProductIdLookup.get.contains(idProduct.get)) {
           Some(idProduct.get)
@@ -973,7 +976,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       val cardName = parts(2)
 
       /*
-          0;          1;             2;           3;     4;          5;      6; ...
+          0;          1;             2;           3;     4;          5;      6;         7;          8;      9;       10;        11;        12;        13;      14;
 "idArticle";"idProduct";"English Name";"Local Name";"Exp.";"Exp. Name";"Price";"Language";"Condition";"Foil?";"Signed?";"Playset?";"Altered?";"Comments";"Amount";"onSale";"Collector Number"
 "561339329";"399979";"Murderous Rider // Swift End";"Murderous Rider // Swift End";"ELD";"Throne of Eldraine";"22.00";"1";"NM";"";"";"";"";"";"1";"1";"97"
            */
@@ -995,11 +998,12 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         leaveOutCards.contains(cardName) ||
           oversizedNames.contains(cardName)) {
         None
-      } else if (idProduct == "idProduct")
+      } else if (idProduct == "idProduct") {
         Some(result + ";\"collectorNumber\"")
-      else {
+      } else {
         val collectorNumberMaybe = idProductToCollectorNumber.get(idProduct.toLong)
-        if (collectorNumberMaybe.contains(REMOVE_FROM_CSV)) {
+        if (parts(COMMENT).toLowerCase.contains("painted")
+          || collectorNumberMaybe.contains(REMOVE_FROM_CSV)) {
           None
         } else {
           Some(result + ";\"" + collectorNumberMaybe.getOrElse("") + "\"")
