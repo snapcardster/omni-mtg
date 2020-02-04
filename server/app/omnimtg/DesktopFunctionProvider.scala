@@ -5,6 +5,7 @@ import java.awt.Desktop
 import java.net.URI
 import java.nio.file.{Path, Paths}
 import java.util.{Base64, Properties}
+import scala.util.{Failure, Success, Try}
 
 import javax.xml.bind.DatatypeConverter
 import omnimtg.Interfaces._
@@ -46,7 +47,7 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
   }
 
   def updateProperties[T](str: String, value: List[String], prop: Properties): Unit = {
-    prop.setProperty(str, value.mkString("|"))
+    prop.setProperty(str, value.mkString(","))
   }
 
   override def updatePropertiesFromPropsAndSaveToFile(prop: Properties, rawController: Any, nativeBase: Object): Throwable = {
@@ -86,7 +87,7 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
   def readList[T](prop: Properties, key: String, f: String => T): List[T] = {
     val value = prop.getProperty(key)
     if (value != null && value != "") {
-      value.split("""|""").map(f).toList
+      value.split(",").flatMap(x => Try(f(x)).toOption).toList
     } else {
       Nil
     }
@@ -110,6 +111,7 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
       updateProp("mkmAccessTokenSecret", controller.mkmAccessTokenSecret, prop)
       updateProp("snapUser", controller.snapUser, prop)
       updateProp("snapToken", controller.snapToken, prop)
+
       updateProp("bidPriceMultiplier", controller.bidPriceMultiplier, prop)
       updateProp("minBidPrice", controller.minBidPrice, prop)
       updateProp("maxBidPrice", controller.maxBidPrice, prop)

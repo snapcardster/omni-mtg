@@ -22,10 +22,11 @@ import scala.collection.mutable.ListBuffer
 case class LogItem(timestamp: Long, text: String, deleted: List[String], changed: List[String], added: List[String])
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
-  val title: String = "OmniMTG SyncTool 2020-01-31"
+  val title: String = "OmniMtg 2020-02-04"
   // TODO update version
 
   val REMOVE_FROM_CSV: String = "REMOVE_FROM_CSV"
+  val removeIfCommentContainsUnique = "#unique"
 
   var bidLanguages: List[Int] = Nil
   var bidConditions: List[Int] = Nil
@@ -74,7 +75,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   override def getThread = thread
 
-  private val prop: Properties = new Properties()
+  private var prop: Properties = new Properties()
 
   override def getProperties = prop
 
@@ -139,28 +140,34 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def start(nativeBase: Object): Unit = {
-    readProperties(nativeBase)
-    running.setValue(true)
-
-    thread = run(nativeBase)
+    //readProperties(nativeBase)
+    //running.setValue(true)
+    //thread = run(nativeBase)
+    sys.error("not used start")
   }
 
   // called by server, ENV-Var to .properties logic
   def startServer(nativeBase: Object): Unit = {
+
+    // load everything, incl multipliers etc
+    readProperties(nativeBase)
+
     val env = System.getenv()
     val keys = Seq("mkmApp", "mkmAppSecret", "mkmAccessToken", "mkmAccessTokenSecret", "snapUser", "snapToken")
     var containedOne = false
     keys.foreach { k =>
-
       if (env.containsKey(k)) {
         val x = env.get(k)
         if (x != null && x != "") {
           containedOne = true
+          // update from env
           prop.setProperty(k, x)
         }
       }
     }
+
     if (containedOne) {
+      // then save if there are any from env
       savePropertiesToFile(nativeBase)
     }
 
@@ -172,8 +179,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       }
     }
 
-    readProperties(nativeBase)
     println("snapBaseUrl is " + snapBaseUrl)
+    println("bidOptions (bidPriceMultiplier: " + bidPriceMultiplier.getValue + ", bidLanguages=" + bidLanguages + ")")
 
     val keysWithLen = keys.map(k => k + "-size: " + Option(prop.getProperty(k)).getOrElse("").length).mkString(", ")
 
@@ -208,7 +215,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def savePropertiesToFile(nativeBase: Object): Unit = {
-    println("save props keys: " + prop.keySet().toArray.mkString(", "))
+    println("savePropertiesToFile save props keys: " + prop.keySet().toArray.mkString(", "))
     val ex = nativeProvider.savePropertiesToFile(prop, nativeBase)
     if (ex != null) {
       handleEx(ex)
@@ -218,7 +225,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   def snapConnector = new SnapConnector(nativeProvider)
 
   def loginSnap(): Unit = {
-    output.setValue(outputPrefix() + "Logging in to Snapcardster...")
+    output.setValue(outputPrefix() + "Logging in to Mage...")
     val body = s"""{\"userId\":\"${snapUser.getValue}\",\"password\":\"${snapPassword.getValue}\"}"""
     output.setValue(outputPrefix() + body)
     val res = snapConnector.call(this, snapLoginEndpoint, "POST", body = body)
@@ -237,8 +244,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def stop(): Unit = {
-    running.setValue(false)
-    thread.interrupt()
+    //running.setValue(false)
+    //thread.interrupt()
+
+    sys.error("not used stop")
   }
 
   def openLink(url: String): Unit = {
@@ -332,7 +341,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       else
         readableChanges(items)
 
-    sb.append("• MKM to Snapcardster, changes at Snapcardster:\n" + info)
+    sb.append("• MKM to Mage, changes at Mage:\n" + info)
 
     val (infoBids, resBids) = postToSnapBids(csv)
     val bidInfo = "Bid csv transferred: " + resBids + " (" + infoBids + ")"
@@ -389,7 +398,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     mutable.HashSet[Long]()
 
   def loadSnapChangedAndDeleteFromStock(info: StringBuilder): StringBuilder = {
-    info.append(outputPrefix() + "• Snapcardster to MKM, changes at MKM:\n")
+    info.append(outputPrefix() + "• Mage to MKM, changes at MKM:\n")
     val json = loadChangedFromSnap()
 
     println(snapChangedEndpoint + "\n" + json)
@@ -467,7 +476,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     info.append("  " + resAdd + "\n")
     output.setValue(info.toString)
 
-    info.append("Notify snapcardster...\n")
+    info.append("Notify Mage...\n")
     output.setValue(info.toString)
 
     val body = if (resAdd.isEmpty) "[]" else resAdd
@@ -638,7 +647,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def getInfo: String = {
-    title + " (bid: " + bidPriceMultiplier.getValue + "/" + bidLanguages.length + "/" + bidFoils.length + "/" + bidConditions.length + ", addedSize " + alreadyAddedSet.size + ")"
+    title + " (Bid: " + bidPriceMultiplier.getValue + "(" + minBidPrice.getValue + "," + maxBidPrice.getValue + ")/L" + bidLanguages.length + "/F" + bidFoils.length + "/C" + bidConditions.length + "/AlreadyAdded" + alreadyAddedSet.size + ")"
   }
 
   def loadChangedFromSnap(): String = {
@@ -1002,7 +1011,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         Some(result + ";\"collectorNumber\"")
       } else {
         val collectorNumberMaybe = idProductToCollectorNumber.get(idProduct.toLong)
-        if (parts(COMMENT).toLowerCase.contains("painted")
+        if (parts(COMMENT).toLowerCase.contains(removeIfCommentContainsUnique)
           || collectorNumberMaybe.contains(REMOVE_FROM_CSV)) {
           None
         } else {
@@ -1259,10 +1268,10 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val resultItems = entriesInRequest.map { entry =>
       val x = mkmConfirms.find(_.externalId == entry.externalId)
 
-      val success = if (!added) false else x.exists(_.successful)
-      // we need succes = false for deletions
+      val success = x.exists(_.successful) // if (!added) false else
+      // we need succes = false for deletions (in an older version)
       ImportConfirmation(entry.collectionId, success, added,
-        if (!added) "needToRemoveFromSnapcardster" else ""
+        "" //  if (!added) "needToRemoveFromSnapcardster" else ""
       )
     }
 
