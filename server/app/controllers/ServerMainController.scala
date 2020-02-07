@@ -18,7 +18,8 @@ case class JsStatus(
                      inSync: Boolean,
                      snapCallsSoFar: Option[Int],
                      mkmCallsSoFar: Option[Int],
-                     callInfo: Option[String]
+                     callInfo: Option[String],
+                     space: Option[String]
                    )
 
 object JsStatus {
@@ -75,12 +76,12 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   def getStatus: Action[AnyContent] = Action.async {
     val newNow = getNow()
     if (newNow != now) {
-      now = newNow
 
       val snap = mc.snapCallsSoFar.getValue()
       val mkm = mc.mkmCallsSoFar.getValue()
       map.put(now, "mage=" + snap + ", mkm=" + mkm)
 
+      now = newNow
       mc.snapCallsSoFar.setValue(0)
       mc.mkmCallsSoFar.setValue(0)
     }
@@ -92,8 +93,11 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
 
       snapCallsSoFar = Some(mc.snapCallsSoFar.getValue),
       mkmCallsSoFar = Some(mc.mkmCallsSoFar.getValue),
-      callInfo = Some(map.map(x => x._1 + ": " + x._2).mkString("\n"))
-    ))))
+      callInfo = Some(map.map(x => x._1 + ": " + x._2).mkString("\n")),
+      space = Some("freeMemory: " + Runtime.getRuntime.freeMemory +
+        ", availableProcessors: " + Runtime.getRuntime.availableProcessors)
+    )))
+    )
   }
 
   def getSettings: Action[AnyContent] = Action.async {
