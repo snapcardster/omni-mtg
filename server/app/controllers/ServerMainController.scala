@@ -19,7 +19,8 @@ case class JsStatus(
                      snapCallsSoFar: Option[Int],
                      mkmCallsSoFar: Option[Int],
                      callInfo: Option[String],
-                     space: Option[String]
+                     space: Option[String],
+                     title: Option[String]
                    )
 
 object JsStatus {
@@ -95,7 +96,8 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
       mkmCallsSoFar = Some(mc.mkmCallsSoFar.getValue),
       callInfo = Some(map.map(x => x._1 + ": " + x._2).mkString("\n")),
       space = Some("freeMemory: " + Runtime.getRuntime.freeMemory +
-        ", availableProcessors: " + Runtime.getRuntime.availableProcessors)
+        ", availableProcessors: " + Runtime.getRuntime.availableProcessors),
+      title = Some(mc.title)
     )))
     )
   }
