@@ -22,7 +22,7 @@ import scala.collection.mutable.ListBuffer
 case class LogItem(timestamp: Long, text: String, deleted: List[String], changed: List[String], added: List[String])
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
-  val title: String = "OmniMtg 2020-02-07"
+  val title: String = "OmniMtg 2020-02-12"
   // TODO update version
 
   val REMOVE_FROM_CSV: String = "REMOVE_FROM_CSV"
@@ -932,9 +932,17 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
         val idProductToExpansions: Map[Long, List[String]] =
           withMoreThanOneSet.flatMap { case (key, value) =>
-            value.flatMap(x =>
-              value.find(_.expansionName == x.expansionName + ": Extras").toList
-                .flatMap(y => List(y.idProduct -> y.expansionName, x.idProduct -> x.expansionName))) match {
+            value.flatMap { x =>
+              value.find(y =>
+                y.expansionName == x.expansionName + ": Extras" ||
+                  // this fixes our mage card db error, we need the lookup anyway
+                  y.expansionName == x.expansionName + ": Promos" ||
+                  // jeez, also include the promo versions
+                  y.expansionName == x.expansionName.replace(": Extras", "").replace(": Promos", "") + ": Promos").toList
+                .flatMap(y =>
+                  List(y.idProduct -> y.expansionName, x.idProduct -> x.expansionName)
+                )
+            } match {
               case Nil => Nil
               case seq =>
                 seq.map(_._1).map(x => x -> seq.map(_._2).distinct)
@@ -996,7 +1004,9 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
           if (i == 4) { // exp code to empty
             ""
           } else if (i == 5) { // exp name without : Extras (confuses backend)
-            x.replace(": Extras", "")
+            x
+              .replace(": Extras", "")
+            // NO, we cannot do that (yet) .replace(": Promos", "")
           } else {
             x
           }

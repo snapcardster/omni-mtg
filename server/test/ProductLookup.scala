@@ -1,14 +1,17 @@
 import java.io.{BufferedReader, ByteArrayInputStream, File, FileReader, InputStreamReader}
 import java.net.{HttpURLConnection, URL}
-import java.util
+import java.nio.file.{Files, Paths, StandardOpenOption}
+import java.{io, util}
 import java.util.Properties
 import java.util.zip.GZIPInputStream
 
 import com.google.gson.{Gson, GsonBuilder}
 import javax.xml.parsers.DocumentBuilderFactory
-import omnimtg.{DesktopFunctionProvider, _}
 import org.junit.Test
 import org.w3c.dom.{Document, Node, NodeList}
+
+import scala.io.Source
+import omnimtg._
 
 // @RunWith(BlockJUnit4ClassRunner.getClass)
 class ProductLookup {
@@ -50,14 +53,30 @@ class ProductLookup {
 
     return ()*/
 
-    //val xml2 = m.getAmbigousProductIds(app)
-    //    val xml2 = m.getCsvWithProductInfo(app).getOrElse("")
-    //xml2.get.mkString("\n")
-    //println("RES:" + xml2.get.mkString("\n") + ", len: " + xml2.get.size)
+    val ambig = m.getAmbigousProductIds(app)
+    m.ambiguousProductIdLookup = ambig
+
+    val csv: String = m
+      .getCsvWithProductInfo(app)
+      .map(_.mkString("\n"))
+      .getOrElse("")
+    //ambig.get.mkString("\n")
+
+
+    val value = ambig.get.mkString("\n")
+    // println("RES len: " + ambig.get.size + "\n" + value)
+    val path1 = Paths.get("ambiguous.txt")
+    Files.write(path1, value.getBytes, List(StandardOpenOption.CREATE): _*)
+    println(path1)
+
+    val path2 = Paths.get("karsten.csv")
+    Files.write(path2, csv.getBytes, List(StandardOpenOption.CREATE): _*)
+    println(path2)
+
 
     //    m.ambiguousProductIdLookup = m.getAmbigousProductIds(app)
-    val csvWithCol = m.loadMkmStock(app)
-    println("csvWithCol:" + csvWithCol)
+    //val csvWithCol = m.loadMkmStock(app)
+    //println("csvWithCol:" + csvWithCol)
 
   }
 }
