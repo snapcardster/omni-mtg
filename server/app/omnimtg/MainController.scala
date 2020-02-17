@@ -22,7 +22,7 @@ import scala.collection.mutable.ListBuffer
 case class LogItem(timestamp: Long, text: String, deleted: List[String], changed: List[String], added: List[String])
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
-  val title: String = "OmniMtg 2020-02-12"
+  val title: String = "OmniMtg 2020-02-17"
   // TODO update version
 
   val REMOVE_FROM_CSV: String = "REMOVE_FROM_CSV"

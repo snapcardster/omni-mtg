@@ -9,6 +9,8 @@ lazy val commonSettings = Seq(
   maintainer := "info@snapcardster.com"
 )
 
+javaOptions ++= Seq("-Xmx256M")
+
 def println(x: Any): Unit = {
   System.out.println(String.valueOf(x))
 }
