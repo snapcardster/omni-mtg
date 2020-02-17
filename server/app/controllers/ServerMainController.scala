@@ -12,6 +12,8 @@ import scala.collection._
 import play.api.Logger
 import scala.concurrent.{ExecutionContext, Future}
 
+case class FreeMem(heapSize: Long, heapMaxSize: Long, heapFreeSize: Long)
+
 case class JsStatus(
                      timeToNextSyncInSec: Int,
                      running: Boolean,
@@ -63,7 +65,7 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   val fun = new ServerFunctionProvider
   fun.println("Starting Omni Mtg Controller...")
   val mc: MainController = new MainController(JavaFXPropertyFactory, fun)
-  fun.println("Version: " + mc.title + "\n")
+  fun.println("Version: " + mc.title + "\n" + getMem)
   mc.startServer(null)
 
   var now: String = getNow()
@@ -86,7 +88,6 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
       mc.snapCallsSoFar.setValue(0)
       mc.mkmCallsSoFar.setValue(0)
     }
-
     Future(Ok(Json.toJson(JsStatus(
       timeToNextSyncInSec = mc.nextSync.getValue,
       running = mc.running.getValue,
@@ -95,11 +96,26 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
       snapCallsSoFar = Some(mc.snapCallsSoFar.getValue),
       mkmCallsSoFar = Some(mc.mkmCallsSoFar.getValue),
       callInfo = Some(map.map(x => x._1 + ": " + x._2).mkString("\n")),
-      space = Some("freeMemory: " + Runtime.getRuntime.freeMemory +
-        ", availableProcessors: " + Runtime.getRuntime.availableProcessors),
+      space = Some(
+        "FreeMem: " + getMem +
+          ", availableProcessors: " + Runtime.getRuntime.availableProcessors),
       title = Some(mc.title)
     )))
     )
+  }
+
+  def getMem() = {
+    // Get current size of heap in bytes// Get current size of heap in bytes
+    val heapSize = Runtime.getRuntime.totalMemory
+
+    // Get maximum size of heap in bytes. The heap cannot grow beyond this size.// Any attempt will result in an OutOfMemoryException.
+    val heapMaxSize = Runtime.getRuntime.maxMemory
+
+    // Get amount of free memory within the heap in bytes. This size will increase // after garbage collection and decrease as new objects are created.
+    val heapFreeSize = Runtime.getRuntime.freeMemory
+
+    val mem = FreeMem(heapSize, heapMaxSize, heapFreeSize)
+    mem
   }
 
   def getSettings: Action[AnyContent] = Action.async {

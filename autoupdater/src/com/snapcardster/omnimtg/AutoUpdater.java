@@ -32,7 +32,7 @@ public class AutoUpdater {
   //        extends Application
   static final String URL = "https://api.github.com/repos/snapcardster/omni-mtg/releases";
   //  Label label = null;
-  final String title = "Omni MTG Updater v2";
+  final String title = "Omni MTG Updater v3";
   int wait = 20;
 
   ShowLogBase showLog;
@@ -253,13 +253,13 @@ public class AutoUpdater {
     if (headless) {
       boolean win = ShowLogDummy.windows;
       File fileServerStarter = Paths.get(o, "bin", "omnimtg" + (win ? ".bat" : "")).toFile();
-      execBin(root, fileServerStarter);
+      execBin(root, fileServerStarter, "-J-Xmx256M");
     } else {
       startJar(file);
     }
   }
 
-  void execBin(File rootPath, File absolutePath) {
+  void execBin(File rootPath, File absolutePath, String options) {
     try {
       File r2 = new File(rootPath.getAbsolutePath());
       if (ShowLogDummy.windows) {
@@ -269,7 +269,7 @@ public class AutoUpdater {
       Runtime rt = Runtime.getRuntime();
       //System.setProperty("user.dir", absolutePath.getParentFile().getAbsolutePath());
       //rt.exec("./" + absolutePath.getName());
-      String absolutePath1 = absolutePath.getAbsolutePath();
+      String absolutePath1 = absolutePath.getAbsolutePath() + (options == null ? "" : " " + options);
       log("Starting Server <" + absolutePath1 + "> using java runtime exec.\nTry opening for example:\nhttp://localhost:9000/status");
       Process process = rt.exec(absolutePath1);
       printThread(process.getErrorStream(), "ERROR: ");
