@@ -22,36 +22,58 @@ import scala.collection.mutable.ListBuffer
 case class LogItem(timestamp: Long, text: String, deleted: List[String], changed: List[String], added: List[String])
 
 class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
-  val title: String = "OmniMtg 2020-02-19"
+  val title: String = "OmniMtg 2020-02-18d"
   // TODO update version
 
   val REMOVE_FROM_CSV: String = "REMOVE_FROM_CSV"
   val removeIfCommentContainsUnique = "#unique"
 
-  var bidLanguages: List[Int] = Nil
-  var bidConditions: List[Int] = Nil
-  var bidFoils: List[Boolean] = Nil
+  // CSV indices
+  val IDPRODUCT = 1
+  val COMMENT = 14
 
-  def println(x: Any): Unit = {
-    nativeProvider.println(x match {
-      case x: Throwable => x.toString + "[" + x.getStackTrace.take(5).mkString(", ") + "]"
-      case x => x
-    })
-  }
+  // constant
+  val problemCardEditions = List(
+    "Fallen Empires", "Antiquities", "Homelands", "Alliances", "Chronicles"
+  )
+  val problemCardNames = List(
+    "Brothers Yamazaki",
+    "Izzet Guildgate",
+    "Dimir Guildgate",
+    "Selesnya Guildgate",
+    "Simic Guildgate",
+    "Azorius Guildgate",
+    "Boros Guildgate",
+    "Golgari Guildgate",
+    "Gruul Guildgate",
+    "Orzhov Guildgate",
+    "Rakdos Guildgate"
+  )
+
+  val splitter = "\";\""
+
+  val leaveOutCards = List(
+    "Mountain",
+    "Island",
+    "Plains",
+    "Forest",
+    "Swamp"
+  )
 
   // when scryfall deployed: 3, before: 2
   val snapApiVersion: String = "3"
-
-  // TODO: change back to test after test
-  var snapBaseUrl: String = "https://api.snapcardster.com"
-  //var snapBaseUrl: String = "https://dev.snapcardster.com"
-  //var snapBaseUrl: String =  "https://api2.snapcardster.de"
-  //var snapBaseUrl: String = "http://localhost:9000"
 
   val CHANGED: String = "changed"
   val ADDED: String = "added"
   val REMOVED: String = "removed"
   val RESERVED: String = "reserved"
+
+  val mkmBaseUrl: String = "https://api.cardmarket.com/ws/v2.0"
+  val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
+  val mkmProductEndpoint: String = mkmBaseUrl + "/products"
+  val mkmStockFileEndpoint: String = mkmBaseUrl + "/output.json/stock/file"
+  val mkmProductFileEndpoint: String = mkmBaseUrl + "/output.json/productlist"
+
 
   def snapCsvEndpoint: String = snapBaseUrl + s"/importer/sellerdata/from/csv/$snapApiVersion"
 
@@ -61,15 +83,29 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   def snapChangedEndpoint: String = snapBaseUrl + s"/marketplace/sellerdata/changed/$snapApiVersion"
 
-  val mkmBaseUrl: String = "https://api.cardmarket.com/ws/v2.0"
-  val mkmStockEndpoint: String = mkmBaseUrl + "/stock"
-  val mkmProductEndpoint: String = mkmBaseUrl + "/products"
-  val mkmStockFileEndpoint: String = mkmBaseUrl + "/output.json/stock/file"
-  val mkmProductFileEndpoint: String = mkmBaseUrl + "/output.json/productlist"
+  // mutable
+
+  var lastBidCreateOptions: String = ""
+
+  // TODO: change back to test after test
+  var snapBaseUrl: String = "https://api.snapcardster.com"
+  //var snapBaseUrl: String = "https://dev.snapcardster.com"
+  //var snapBaseUrl: String =  "https://api2.snapcardster.de"
+  //var snapBaseUrl: String = "http://localhost:9000"
+
+  var bidLanguages: List[Int] = Nil
+  var bidConditions: List[Int] = Nil
+  var bidFoils: List[Boolean] = Nil
+
+  def println(x: Any): Unit = {
+    nativeProvider.println(x match {
+      case x: Exception => x.toString + "[" + x.getStackTrace.take(5).mkString(", ") + "]"
+      case x => x
+    })
+  }
 
   def mkmProductExpansionEndpoint(idGame: String = "1"): String =
     mkmBaseUrl + "/output.json/games/" + idGame + "/expansions"
-
 
   private var thread: Thread = null
 
@@ -264,8 +300,11 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
               inSync.setValue(true)
               sync(nativeBase)
             } catch {
-              case e: Throwable =>
+              case e: Exception =>
                 handleEx(e)
+              case e: Error =>
+                handleEx(e)
+                System.exit(1111)
             }
             inSync.setValue(false)
 
@@ -291,7 +330,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
             }
           } else {
             // not running, just wait
-            Thread.sleep(1000)
+            Thread.sleep(10000)
+            nativeProvider.println(" - Not running, just wait")
           }
         }
       }
@@ -341,36 +381,42 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       else
         readableChanges(items)
 
-    sb.append("• MKM to Mage, changes at Mage:\n" + info)
+    sb.append("• MKM to Mage, changes at Mage:\n").append(info)
 
     val (infoBids, resBids) = postToSnapBids(csv)
+    csv = null
+
     val bidInfo = "Bid csv transferred: " + resBids + " (" + infoBids + ")"
-    output.setValue(sb.toString + "\n" + bidInfo)
+
+    sb.append("\n" + bidInfo)
+    output.setValue(sb.toString)
 
     addLogEntry(infoBids, resBids)
-
   }
 
   def getLogs: List[LogItem] = {
     LogItem(System.currentTimeMillis,
-      "Latest response: \n" + output.getValue, Nil, Nil, Nil) ::
+      output.getValue, Nil, Nil, Nil) ::
       logs.getValue.asInstanceOf[List[LogItem]]
   }
+
+  // "Latest response: \n" +
 
   def addLogEntry(infoBids: String, resBids: Int): Unit = {
 
     val item = currentLogItem
 
     if (deletedList.nonEmpty || changedList.nonEmpty || addedList.nonEmpty) {
+      logs.setValue(item :: Nil)
+      // :: logs.getValue.asInstanceOf[List[LogItem]])
+    } /*else if (resBids != 0) {
       logs.setValue(item :: logs.getValue.asInstanceOf[List[LogItem]])
-    } else if (resBids != 0) {
-      logs.setValue(item :: logs.getValue.asInstanceOf[List[LogItem]])
-    }
+    }*/
   }
 
   def currentLogItem() = {
     LogItem(System.currentTimeMillis,
-      output.getValue, deletedList, changedList, addedList)
+      "", deletedList, changedList, addedList)
   }
 
   def readableChanges(items: Seq[SellerDataChanged]): String = {
@@ -507,7 +553,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     try {
       new Gson().fromJson(json, classOf[Array[SellerDataChanged]])
     } catch {
-      case x: Throwable =>
+      case x: Exception =>
         sys.error("getChangeItems: " + x.toString + "\n" + json)
     }
   }
@@ -530,8 +576,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       "null"
     }
   }
-
-  var lastBidCreateOptions: String = ""
 
   def filterBids(csv: Array[String]): Array[String] = {
     val bidPriceMultiplierValue: Double = Double.unbox(bidPriceMultiplier.getValue)
@@ -591,12 +635,14 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
   }
 
   def postToSnapBids(csv: Array[String]): (String, Int) = {
+    val csvLength = csv.length
     val bidPriceMultiplierValue: Double = Double.unbox(bidPriceMultiplier.getValue)
     val minBidPriceValue: Double = Double.unbox(minBidPrice.getValue)
     val maxBidPriceValue: Double = Double.unbox(maxBidPrice.getValue)
     if (bidPriceMultiplierValue > 0) {
       try {
         val lines = filterBids(csv)
+        //csv = null
         val body = new Gson().toJson(MtgCsvFileRequest(
           "mkmStock.csv",
           lines.mkString("\n"),
@@ -613,7 +659,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
           "mult" + bidPriceMultiplierValue + ",min" + minBidPriceValue + ",max" + maxBidPriceValue +
             "bidFoils" + bidFoils + ",bidLanguages" + bidLanguages + "bidConditions" + bidConditions
 
-        println("filter bids from " + csv.length + " to " + lines.length + " with " + currentBidCreateOptions)
+        println("filter bids from " + csvLength + " to " + lines.length + " with " + currentBidCreateOptions)
 
         if (currentBidCreateOptions != lastBidCreateOptions) {
           lastBidCreateOptions = currentBidCreateOptions
@@ -625,7 +671,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
         }
         (res, lines.length - 1)
       } catch {
-        case e: Throwable =>
+        case e: Exception =>
           handleEx(e, "postToSnapBids with mult " + bidPriceMultiplierValue)
           ("Error: " + e.getMessage, 0)
       }
@@ -642,6 +688,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
       // we need ask csv unchanged in case it goes back
       info = getInfo
     ))
+    //csv = null
     val res = snapConnector.call(this, snapCsvEndpoint, "POST", getAuth, body)
     res
   }
@@ -691,7 +738,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     unzipB64StringAndGetLines(result)
   }
 
-  var idProductToCollectorNumber: mutable.Map[Long, String] = new mutable.HashMap[Long, String]
+  var idProductToCollectorNumber: mutable.Map[Long, String] =
+    new mutable.HashMap[Long, String]
 
   def calcLookup(mkm: M11DedicatedApp, productIds: Set[Long]): Int = {
     productIds.toSeq.flatMap { id =>
@@ -705,7 +753,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
             xmlList(x.getChildNodes)
               .find(x => x.getNodeName == "number")
               .map(_.getTextContent)
-
           }
 
         val isVersionCard =
@@ -733,27 +780,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }.sum
   }
 
-  val IDPRODUCT = 1
-  val COMMENT = 14
-
   def refreshLookupIfNeeded(mkm: M11DedicatedApp, csv: Array[String]): Unit = {
-    val problemCardEditions = List(
-      "Fallen Empires", "Antiquities", "Homelands", "Alliances", "Chronicles"
-    )
-    val problemCardNames = List(
-      "Brothers Yamazaki",
-      "Izzet Guildgate",
-      "Dimir Guildgate",
-      "Selesnya Guildgate",
-      "Simic Guildgate",
-      "Azorius Guildgate",
-      "Boros Guildgate",
-      "Golgari Guildgate",
-      "Gruul Guildgate",
-      "Orzhov Guildgate",
-      "Rakdos Guildgate"
-    )
-
     val productIdsFromCsvThatNeedLookup =
       csv.flatMap { x =>
         val parts = x.split(splitter)
@@ -976,16 +1003,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     }
   }
 
-  val splitter = "\";\""
-
-  val leaveOutCards = List(
-    "Mountain",
-    "Island",
-    "Plains",
-    "Forest",
-    "Swamp"
-  )
-
   def buildNewCsv(csv: Array[String]): Array[String] = {
     val csvWithCol = csv.flatMap { line =>
       val parts = line.split(splitter)
@@ -1195,8 +1212,8 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     x.toLowerCase.contains("x") || x == "1" || x.toLowerCase == "true"
   }
 
-  def xmlList(list: NodeList): List[Node] = {
-    0.until(list.getLength).map(x => list.item(x)).toList
+  def xmlList(list: NodeList): Seq[Node] = {
+    0.until(list.getLength).map(x => list.item(x)).toSeq
   }
 
   /**
@@ -1213,7 +1230,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     dbFactory.setExpandEntityReferences(false)
     val dBuilder = dbFactory.newDocumentBuilder
     val doc = dBuilder.parse(new ByteArrayInputStream(xmlDoc.getBytes("UTF-8")))
-    doc.getDocumentElement.normalize()
+    doc.getDocumentElement.normalize
     doc
   }
 
@@ -1240,7 +1257,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
     val tags = try {
       xmlList(getXml(xml).getElementsByTagName(tagName))
     } catch {
-      case x: Throwable =>
+      case x: Exception =>
         handleEx(x, "performing getXml from " + xml)
         Nil
     }

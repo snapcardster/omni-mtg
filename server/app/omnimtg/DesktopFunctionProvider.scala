@@ -19,7 +19,7 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
       try {
         desktop.browse(new URI(url))
       } catch {
-        case e: Throwable => e.printStackTrace
+        case e: Exception => e.printStackTrace
       }
     }
   }
@@ -125,7 +125,7 @@ class DesktopFunctionProvider() extends NativeFunctionProvider {
         controller.output.setValue("Stored authentication information restored")
       }
     } catch {
-      case e: Exception => e
+      case e: Exception => return e
     } finally {
       str.close()
     }

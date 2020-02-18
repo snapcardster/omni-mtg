@@ -15,13 +15,13 @@ class ErrorHandler @Inject()(implicit val executionContext: ExecutionContext) ex
 
   override def onClientError(request: RequestHeader, statusCode: Int, message: String): Future[Result] = {
     val str = handle(message, null, statusCode)
-    Future(Result(ResponseHeader(statusCode), HttpEntity.Strict(ByteString(str), None)))
+    Future.successful(Result(ResponseHeader(statusCode), HttpEntity.Strict(ByteString(str), None)))
   }
 
   override def onServerError(request: RequestHeader, exception: Throwable): Future[Result] = {
     val statusCode = 500
     val message = exception.getMessage
     val str = handle(message, exception, statusCode)
-    Future(Result(ResponseHeader(statusCode), HttpEntity.Strict(ByteString(str), None)))
+    Future.successful(Result(ResponseHeader(statusCode), HttpEntity.Strict(ByteString(str), None)))
   }
 }

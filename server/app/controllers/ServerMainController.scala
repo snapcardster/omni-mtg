@@ -12,7 +12,19 @@ import scala.collection._
 import play.api.Logger
 import scala.concurrent.{ExecutionContext, Future}
 
-case class FreeMem(heapSize: Long, heapMaxSize: Long, heapFreeSize: Long)
+case class FreeMem(
+                    heapSize: Long,
+                    heapMaxSize: Long,
+                    heapFreeSize: Long
+                  ) {
+  override def toString: String = {
+    Map(
+      "heapSize" -> (heapSize / 1024.0 / 1024.0 + " MB"),
+      "heapMaxSize" -> (heapMaxSize / 1024.0 / 1024.0 + " MB"),
+      "heapFreeSize" -> (heapFreeSize / 1024.0 / 1024.0 + " MB")
+    ).toString
+  }
+}
 
 case class JsStatus(
                      timeToNextSyncInSec: Int,
@@ -88,7 +100,8 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
       mc.snapCallsSoFar.setValue(0)
       mc.mkmCallsSoFar.setValue(0)
     }
-    Future(Ok(Json.toJson(JsStatus(
+
+    Future.successful(Ok(Json.toJson(JsStatus(
       timeToNextSyncInSec = mc.nextSync.getValue,
       running = mc.running.getValue,
       inSync = mc.inSync.getValue,
@@ -119,7 +132,7 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
   }
 
   def getSettings: Action[AnyContent] = Action.async {
-    Future(Ok(Json.toJson(JsSettings(
+    Future.successful(Ok(Json.toJson(JsSettings(
       enabled = mc.running.getValue,
       intervalInSec = mc.interval.getValue,
       bidPriceMultiplier = mc.bidPriceMultiplier.getValue,
@@ -139,17 +152,17 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
     implicit val w: Writes[LogItem] = Json.writes[LogItem]
     //}
 
-    Future(Ok(Json.toJson(mc.getLogs)))
+    Future.successful(Ok(Json.toJson(mc.getLogs)))
   }
 
   def parseJs[T](req: Request[AnyContent], rds: Reads[T])(f: T => Future[Result]): Future[Result] = {
     req.body.asJson match {
       case None =>
-        Future(BadRequest(Json.toJson(Seq("No json body, hasBody: " + req.hasBody))))
+        Future.successful(BadRequest(Json.toJson(Seq("No json body, hasBody: " + req.hasBody))))
       case Some(js) =>
         js.validate[T](rds) match {
           case JsError(x) =>
-            Future(BadRequest(Json.toJson(Seq("Wrong json body: " + x))))
+            Future.successful(BadRequest(Json.toJson(Seq("Wrong json body: " + x))))
           case JsSuccess(x, _) =>
             f(x)
         }
@@ -201,7 +214,7 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
     fun.println("Exit now with " + retCode)
     Thread.sleep(100)
     System.exit(retCode)
-    Future(Ok(Json.toJson(Seq(
+    Future.successful(Ok(Json.toJson(Seq(
       "Ok, you probably won't see this, call status and see it I'm still here"
     ))))
   }
@@ -225,7 +238,7 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
     })
     mc.running.setValue(false)
 
-    Future(Ok(Json.toJson(Seq(
+    Future.successful(Ok(Json.toJson(Seq(
       "Ok, ",
       "Running: " + mc.running.getValue,
       "Time to exit is: " + whenTime

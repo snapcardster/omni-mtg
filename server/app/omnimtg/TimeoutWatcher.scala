@@ -24,7 +24,10 @@ case class TimeoutWatcher[T](timeout: Int, task: () => T) {
         this.exception = e
         this.state = TimeoutWatcher.Timeouted
         None
-      case e: Throwable =>
+      case e: Error =>
+        System.exit(1112)
+        sys.error("impossible to reach")
+      case e: Exception =>
         this.exception = e
         this.state = TimeoutWatcher.Exception
         None
