@@ -21,9 +21,20 @@ import scala.collection.mutable.ListBuffer
 
 case class LogItem(timestamp: Long, text: String, deleted: List[String], changed: List[String], added: List[String])
 
-class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctionProvider) extends MainControllerInterface {
-  val title: String = "OmniMtg 2020-02-18d"
+class MainController(
+                      val propFactory: PropertyFactory,
+                      val nativeProvider: NativeFunctionProvider
+                    ) extends MainControllerInterface {
+  val title: String = "OmniMtg 2020-02-26"
   // TODO update version
+
+  def saveProps = {
+    println("Saving Props")
+    val x = nativeProvider.updatePropertiesFromPropsAndSaveToFile(prop, this, null)
+    if (x != null) {
+      handleEx(x, "updatePropertiesFromPropsAndSaveToFile")
+    }
+  }
 
   val REMOVE_FROM_CSV: String = "REMOVE_FROM_CSV"
   val removeIfCommentContainsUnique = "#unique"
@@ -85,7 +96,7 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
   // mutable
 
-  var lastBidCreateOptions: String = ""
+  //var lastBidCreateOptions: String = ""
 
   // TODO: change back to test after test
   var snapBaseUrl: String = "https://api.snapcardster.com"
@@ -661,14 +672,6 @@ class MainController(propFactory: PropertyFactory, nativeProvider: NativeFunctio
 
         println("filter bids from " + csvLength + " to " + lines.length + " with " + currentBidCreateOptions)
 
-        if (currentBidCreateOptions != lastBidCreateOptions) {
-          lastBidCreateOptions = currentBidCreateOptions
-          println("save in props: " + currentBidCreateOptions)
-          val x = nativeProvider.updatePropertiesFromPropsAndSaveToFile(prop, this, null)
-          if (x != null) {
-            handleEx(x, "updatePropertiesFromPropsAndSaveToFile")
-          }
-        }
         (res, lines.length - 1)
       } catch {
         case e: Exception =>

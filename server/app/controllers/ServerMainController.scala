@@ -18,11 +18,11 @@ case class FreeMem(
                     heapFreeSize: Long
                   ) {
   override def toString: String = {
-    Map(
+    List(
       "heapSize" -> (heapSize / 1024.0 / 1024.0 + " MB"),
       "heapMaxSize" -> (heapMaxSize / 1024.0 / 1024.0 + " MB"),
       "heapFreeSize" -> (heapFreeSize / 1024.0 / 1024.0 + " MB")
-    ).toString
+    ).mkString("\n")
   }
 }
 
@@ -196,6 +196,11 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
 
       val old = mc.running.getValue
       mc.running.setValue(x.enabled)
+
+      if (changeList.nonEmpty) {
+        mc.saveProps
+      }
+
       val res =
         if (x.enabled && !old) {
           Seq("Interval set", "Sync started")
