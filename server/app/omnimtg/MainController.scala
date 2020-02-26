@@ -377,11 +377,12 @@ class MainController(
 
     sb.append("Sync run " + new Date() + ". Loading MKM stock...\n")
     csv = loadMkmStock(getMkm)
-    sb.append("  " + csv.length + " lines read from mkm stock\n")
+    sb.append("  " + csv.length + " lines read from mkm stock\nPosting to Mage (" + new Date() + ")...")
     output.setValue(sb.toString)
-
+    val start = System.currentTimeMillis
     val res = postToSnap(csv.mkString("\n"))
 
+    val time = System.currentTimeMillis - start
     // output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
     println("res has a length of " + res.length)
     val items = getChangeItems(res)
@@ -392,7 +393,7 @@ class MainController(
       else
         readableChanges(items)
 
-    sb.append("• MKM to Mage, changes at Mage:\n").append(info)
+    sb.append("• MKM to Mage, changes at Mage (took " + (time / 1000.0) + "s):\n").append(info)
 
     val (infoBids, resBids) = postToSnapBids(csv)
     csv = null
@@ -697,7 +698,7 @@ class MainController(
   }
 
   def getInfo: String = {
-    title + " (Bid: " + bidPriceMultiplier.getValue + "(" + minBidPrice.getValue + "," + maxBidPrice.getValue + ")/L" + bidLanguages.length + "/F" + bidFoils.length + "/C" + bidConditions.length + "/AlreadyAdded" + alreadyAddedSet.size + ")"
+    title + " (Ask: " + askPriceMultiplier.getValue + ", Bid: " + bidPriceMultiplier.getValue + "(" + minBidPrice.getValue + "," + maxBidPrice.getValue + ")/L" + bidLanguages.length + "/F" + bidFoils.length + "/C" + bidConditions.length + "/AlreadyAdded" + alreadyAddedSet.size + ")"
   }
 
   def loadChangedFromSnap(): String = {

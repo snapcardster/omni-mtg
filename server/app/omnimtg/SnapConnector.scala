@@ -53,11 +53,11 @@ class SnapConnector(func: NativeFunctionProvider) {
       val timeoutMs = Config.getTimeout
       connection.setConnectTimeout(timeoutMs)
       connection.setReadTimeout(timeoutMs)
-      func.println("connect to snapcardster, timeouts (conn/read) " + timeoutMs + " ms...")
+      func.println("connect to snapcardster, timeouts (conn/read) " + timeoutMs + " ms... @ " + new Date())
       connection.connect()
 
       val lastCode = connection.getResponseCode
-      func.println(method + " " + requestURL + " response code:" + lastCode)
+      func.println(method + " " + requestURL + " response code:" + lastCode + " @ " + new Date())
 
       val str =
         if (lastCode == 200)
