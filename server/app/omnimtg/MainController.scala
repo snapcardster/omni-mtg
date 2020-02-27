@@ -25,10 +25,10 @@ class MainController(
                       val propFactory: PropertyFactory,
                       val nativeProvider: NativeFunctionProvider
                     ) extends MainControllerInterface {
-  val title: String = "OmniMtg 2020-02-26"
+  val title: String = "OmniMtg 2020-02-27"
   // TODO update version
 
-  def saveProps = {
+  def saveProps(): Unit = {
     println("Saving Props")
     val x = nativeProvider.updatePropertiesFromPropsAndSaveToFile(prop, this, null)
     if (x != null) {
@@ -99,8 +99,8 @@ class MainController(
   //var lastBidCreateOptions: String = ""
 
   // TODO: change back to test after test
-  var snapBaseUrl: String = "https://api.snapcardster.com"
-  //var snapBaseUrl: String = "https://dev.snapcardster.com"
+  // var snapBaseUrl: String = "https://api.snapcardster.com"
+  var snapBaseUrl: String = /*TODO DO NOT COMMIT TODO*/ "https://dev.snapcardster.com"
   //var snapBaseUrl: String =  "https://api2.snapcardster.de"
   //var snapBaseUrl: String = "http://localhost:9000"
 
@@ -352,9 +352,10 @@ class MainController(
   }
 
   def sync(nativeBase: Object): Unit = {
-    //if (backupFirst) {
     // Create a local backup of the MKM Stock
-    output.setValue(outputPrefix() + "Saving Backup of MKM Stock before doing anything")
+    val sb = new StringBuilder
+    sb.append(outputPrefix).append("Saving Backup of MKM Stock before doing anything")
+    output.setValue(sb.toString)
     var csv = loadMkmStock(getMkm)
     val bFile = s"backup_${System.currentTimeMillis}.csv"
     val saveBackupPath = new File(File.separatorChar + "backup" + File.separatorChar + bFile) //Paths.get("backup", bFile).toFile
@@ -369,15 +370,14 @@ class MainController(
       println(e)
     }
 
-    //backupFirst = false
-    //}
-
-    val sb = new StringBuilder
     val res1 = loadSnapChangedAndDeleteFromStock(sb)
 
-    sb.append("Sync run " + new Date() + ". Loading MKM stock...\n")
+    sb.append("Loading MKM stock again...\n")
     csv = loadMkmStock(getMkm)
-    sb.append("  " + csv.length + " lines read from mkm stock\nPosting to Mage (" + new Date() + ")...")
+    sb.append("  ").append(csv.length)
+      .append(" lines read from mkm stock\nPosting to Mage (")
+      .append(new Date()).append(")...")
+
     output.setValue(sb.toString)
     val start = System.currentTimeMillis
     val res = postToSnap(csv.mkString("\n"))
@@ -393,14 +393,12 @@ class MainController(
       else
         readableChanges(items)
 
-    sb.append("• MKM to Mage, changes at Mage (took " + (time / 1000.0) + "s):\n").append(info)
+    sb.append("• MKM to Mage, changes at Mage (took ").append((time / 1000.0)).append("s):\n").append(info)
 
     val (infoBids, resBids) = postToSnapBids(csv)
     csv = null
 
-    val bidInfo = "Bid csv transferred: " + resBids + " (" + infoBids + ")"
-
-    sb.append("\n" + bidInfo)
+    sb.append("\nBid csv transferred: ").append(resBids).append(" (").append(infoBids).append(")")
     output.setValue(sb.toString)
 
     addLogEntry(infoBids, resBids)
@@ -411,8 +409,6 @@ class MainController(
       output.getValue, Nil, Nil, Nil) ::
       logs.getValue.asInstanceOf[List[LogItem]]
   }
-
-  // "Latest response: \n" +
 
   def addLogEntry(infoBids: String, resBids: Int): Unit = {
 
@@ -516,10 +512,12 @@ class MainController(
       )
     )
 
-    info.append(
-      "Found already added (thus skipped) " + alreadyAddedItems.length + " items...\n"
-        + readableChanges(alreadyAddedItems) + "\n"
-    )
+    if (alreadyAddedItems.nonEmpty) {
+      info.append(
+        "Found already added, thus skipped, items " + alreadyAddedItems.length + "...\n"
+          + readableChanges(alreadyAddedItems) + "\n"
+      )
+    }
 
     val addedReadable = readableChanges(addedItems)
     info.append(
@@ -531,7 +529,7 @@ class MainController(
 
     val resAdd =
       addToMkmStock(addedItems, getMkm)
-    info.append("  " + resAdd + "\n")
+    info.append("  ").append(resAdd).append("\n")
     output.setValue(info.toString)
 
     info.append("Notify Mage...\n")
@@ -540,7 +538,7 @@ class MainController(
     val body = if (resAdd.isEmpty) "[]" else resAdd
     val res = snapConnector.call(this, snapChangedEndpoint, "POST", getAuth, body)
 
-    info.append("  " + res + "\n")
+    info.append("  ").append(res).append("\n")
     output.setValue(info.toString)
 
     info

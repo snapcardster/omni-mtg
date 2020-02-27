@@ -198,7 +198,7 @@ class ServerMainController @Inject()(cc: ControllerComponents, implicit val exec
       mc.running.setValue(x.enabled)
 
       if (changeList.nonEmpty) {
-        mc.saveProps
+        mc.saveProps()
       }
 
       val res =
