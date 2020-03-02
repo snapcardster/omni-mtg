@@ -25,7 +25,7 @@ class MainController(
                       val propFactory: PropertyFactory,
                       val nativeProvider: NativeFunctionProvider
                     ) extends MainControllerInterface {
-  val title: String = "OmniMtg 2020-02-28b"
+  val title: String = "OmniMtg 2020-03-02"
   // TODO update version
 
   def saveProps(): Unit = {
