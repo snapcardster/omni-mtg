@@ -25,7 +25,7 @@ class MainController(
                       val propFactory: PropertyFactory,
                       val nativeProvider: NativeFunctionProvider
                     ) extends MainControllerInterface {
-  val title: String = "OmniMtg 2020-02-27"
+  val title: String = "OmniMtg 2020-02-28b"
   // TODO update version
 
   def saveProps(): Unit = {
@@ -99,20 +99,22 @@ class MainController(
   //var lastBidCreateOptions: String = ""
 
   // TODO: change back to test after test
-  // var snapBaseUrl: String = "https://api.snapcardster.com"
-  var snapBaseUrl: String = /*TODO DO NOT COMMIT TODO*/ "https://dev.snapcardster.com"
-  //var snapBaseUrl: String =  "https://api2.snapcardster.de"
+  var snapBaseUrl: String = "https://api.snapcardster.com"
+  // var snapBaseUrl: String = /*TODO DO NOT COMMIT TODO*/ "https://dev.snapcardster.com"
+  // var snapBaseUrl: String = "https://api2.snapcardster.de"
   //var snapBaseUrl: String = "http://localhost:9000"
 
   var bidLanguages: List[Int] = Nil
   var bidConditions: List[Int] = Nil
   var bidFoils: List[Boolean] = Nil
 
-  def println(x: Any): Unit = {
-    nativeProvider.println(x match {
+  def println(x: Any): String = {
+    val res = x match {
       case x: Exception => x.toString + "[" + x.getStackTrace.take(5).mkString(", ") + "]"
-      case x => x
-    })
+      case x => String.valueOf(x)
+    }
+    nativeProvider.println(res)
+    res
   }
 
   def mkmProductExpansionEndpoint(idGame: String = "1"): String =
@@ -314,8 +316,8 @@ class MainController(
               case e: Exception =>
                 handleEx(e)
               case e: Error =>
-                handleEx(e)
                 System.exit(1111)
+                handleEx(e)
             }
             inSync.setValue(false)
 
@@ -385,13 +387,13 @@ class MainController(
     val time = System.currentTimeMillis - start
     // output.setValue(outputPrefix() + snapCsvEndpoint + "\n" + res)
     println("res has a length of " + res.length)
-    val items = getChangeItems(res)
+    val items = res // = summary getChangeItems(res)
 
-    val info =
-      if (items.isEmpty)
-        "  No changes were done on the server, everything up to date"
-      else
-        readableChanges(items)
+    val info = "(not displayed, " + items.length + ")"
+    //if (items.isEmpty)
+    // "  " // No changes were done on the server, everything up to date"
+    //else
+    //  res // readableChanges(items)
 
     sb.append("• MKM to Mage, changes at Mage (took ").append((time / 1000.0)).append("s):\n").append(info)
 
@@ -570,8 +572,10 @@ class MainController(
 
   def handleEx(e: Throwable, obj: Any = null): Unit = {
     if (e != null) {
-      println(e)
+      val res = println(e)
       e.printStackTrace()
+      output.setValue(res)
+      // in case the next line cannot be performed
       output.setValue(errorText(e) + "\n" + obj)
     } else {
       output.setValue("Error here: \n" + obj)
@@ -664,14 +668,15 @@ class MainController(
 
         println("post bids: " + lines.length + " lines of csv, first card line:\n" + lines.drop(1).headOption.getOrElse(""))
 
-        val res = snapConnector.call(this, snapCsvBidEndpoint, "POST", getAuth, body)
+        // val res =
+        snapConnector.call(this, snapCsvBidEndpoint, "POST", getAuth, body, dontReadResult = true)
         val currentBidCreateOptions =
           "mult" + bidPriceMultiplierValue + ",min" + minBidPriceValue + ",max" + maxBidPriceValue +
             "bidFoils" + bidFoils + ",bidLanguages" + bidLanguages + "bidConditions" + bidConditions
 
         println("filter bids from " + csvLength + " to " + lines.length + " with " + currentBidCreateOptions)
 
-        (res, lines.length - 1)
+        ("", lines.length - 1)
       } catch {
         case e: Exception =>
           handleEx(e, "postToSnapBids with mult " + bidPriceMultiplierValue)
@@ -691,7 +696,7 @@ class MainController(
       info = getInfo
     ))
     //csv = null
-    val res = snapConnector.call(this, snapCsvEndpoint, "POST", getAuth, body)
+    val res = snapConnector.call(this, snapCsvEndpoint, "POST", getAuth, body, dontReadResult = true)
     res
   }
 

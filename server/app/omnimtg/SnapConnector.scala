@@ -5,21 +5,21 @@ import java.io._
 import java.net.{HttpURLConnection, URL}
 
 class SnapConnector(func: NativeFunctionProvider) {
-  def call(mc: MainController, requestURL: String, method: String, auth: String = null, body: String = null): String = {
+  def call(mc: MainController, requestURL: String, method: String, auth: String = null, body: String = null, dontReadResult: Boolean = false): String = {
 
     mc.snapCallsSoFar.setValue(mc.snapCallsSoFar.getValue + 1)
 
     val timeoutMs = Config.getTimeout
 
     val timeout = TimeoutWatcher(timeoutMs, () =>
-      callCore(requestURL, method, auth, body)
+      callCore(requestURL, method, auth, body, dontReadResult)
     )
     timeout.run().getOrElse(
       sys.error("Timeout: " + method + " " + requestURL + " did not complete within " + timeoutMs + "ms\nInner: " + timeout.exception)
     )
   }
 
-  def callCore(requestURL: String, method: String, auth: String = null, body: String = null): String = {
+  def callCore(requestURL: String, method: String, auth: String = null, body: String = null, dontReadResult: Boolean = false): String = {
     func.println(
       method + ": " + requestURL + ", Auth: " + auth + ", " +
         (if (body == null) "no body" else "body is a string of length " + body.length)
@@ -69,18 +69,24 @@ class SnapConnector(func: NativeFunctionProvider) {
       if (str == null) {
         sys.error("Error: " + lastCode)
       }
-      val rd = new BufferedReader(new InputStreamReader(str))
-      val sb = new StringBuffer
-      var aborted = false
-      while (!aborted) {
-        val line = rd.readLine
-        if (line == null) {
-          aborted = true
-        } else {
-          sb.append(line)
+
+      if (dontReadResult) {
+        ""
+      } else {
+        val rd = new BufferedReader(new InputStreamReader(str))
+        val sb = new StringBuffer
+        var aborted = false
+        while (!aborted) {
+          val line = rd.readLine
+          if (line == null) {
+            aborted = true
+          } else {
+            sb.append(line)
+          }
         }
+        rd.close
+        sb.toString
       }
-      sb.toString
     } finally {
       // https://stackoverflow.com/questions/4767553/safe-use-of-httpurlconnection
       if (connection != null) {
