@@ -25,7 +25,7 @@ class MainController(
                       val propFactory: PropertyFactory,
                       val nativeProvider: NativeFunctionProvider
                     ) extends MainControllerInterface {
-  val title: String = "OmniMtg 2020-03-02"
+  val title: String = "OmniMtg 2020-03-13"
   // TODO update version
 
   def saveProps(): Unit = {
@@ -100,9 +100,9 @@ class MainController(
 
   // TODO: change back to test after test
   var snapBaseUrl: String = "https://api.snapcardster.com"
-  // var snapBaseUrl: String = /*TODO DO NOT COMMIT TODO*/ "https://dev.snapcardster.com"
+  // var snapBaseUrl: String = "https://dev.snapcardster.com"
   // var snapBaseUrl: String = "https://api2.snapcardster.de"
-  //var snapBaseUrl: String = "http://localhost:9000"
+  // var snapBaseUrl: String = "http://localhost:9000"
 
   var bidLanguages: List[Int] = Nil
   var bidConditions: List[Int] = Nil
@@ -749,6 +749,8 @@ class MainController(
     new mutable.HashMap[Long, String]
 
   def calcLookup(mkm: M11DedicatedApp, productIds: Set[Long]): Int = {
+    return 0
+
     productIds.toSeq.flatMap { id =>
       if (mkmReqTimoutable(mkmProductEndpoint + "/" + id, "GET", (url, method) =>
         mkm.request(url, method, null, null, true))) {
@@ -788,6 +790,8 @@ class MainController(
   }
 
   def refreshLookupIfNeeded(mkm: M11DedicatedApp, csv: Array[String]): Unit = {
+    return ()
+
     val productIdsFromCsvThatNeedLookup =
       csv.flatMap { x =>
         val parts = x.split(splitter)
@@ -886,6 +890,7 @@ class MainController(
 
   // returns a map: ProductId -> extra/not-extra variants
   def getAmbigousProductIds(mkm: M11DedicatedApp): Option[Map[Long, Seq[String]]] = {
+    return None
 
     if (mkmReqTimoutable(mkmProductExpansionEndpoint(), "GET", (url, method) =>
       mkm.request(url, method, null, null, true))) {
@@ -1028,8 +1033,7 @@ class MainController(
           if (i == 4) { // exp code to empty
             ""
           } else if (i == 5) { // exp name without : Extras (confuses backend)
-            x
-              .replace(": Extras", "")
+            x // .replace(": Extras", "")
             // NO, we cannot do that (yet) .replace(": Promos", "")
           } else {
             x
@@ -1210,9 +1214,12 @@ class MainController(
   def mkmReqTimoutable(endpoint: String, method: String, mkmRequestCall: (String, String) => Boolean): Boolean = {
     mkmCallsSoFar.setValue(mkmCallsSoFar.getValue + 1)
     val timeoutMs = Config.getTimeout
-    TimeoutWatcher(timeoutMs, () => mkmRequestCall(endpoint, method)).run.getOrElse(
-      sys.error("Timeout: " + method + " " + endpoint + " did not complete within " + timeoutMs + "ms")
-    )
+    TimeoutWatcher(timeoutMs, () => mkmRequestCall(endpoint, method)).run.getOrElse {
+      println("Timeout: " + method + " " + endpoint + " did not complete within " + timeoutMs + "ms, exiting")
+      System.exit(144)
+      // timeouts are bad, just restart
+      sys.error("cannot be reached")
+    }
   }
 
   def isTrue(x: String): Boolean = {

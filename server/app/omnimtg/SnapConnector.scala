@@ -14,9 +14,12 @@ class SnapConnector(func: NativeFunctionProvider) {
     val timeout = TimeoutWatcher(timeoutMs, () =>
       callCore(requestURL, method, auth, body, dontReadResult)
     )
-    timeout.run().getOrElse(
-      sys.error("Timeout: " + method + " " + requestURL + " did not complete within " + timeoutMs + "ms\nInner: " + timeout.exception)
-    )
+    timeout.run().getOrElse {
+      println("Timeout: " + method + " " + requestURL + " did not complete within " + timeoutMs + "ms\nInner: " + timeout.exception + ", EXITING")
+      System.exit(155)
+      sys.error("cannot be reached")
+      // timeouts are bad, just restart
+    }
   }
 
   def callCore(requestURL: String, method: String, auth: String = null, body: String = null, dontReadResult: Boolean = false): String = {
