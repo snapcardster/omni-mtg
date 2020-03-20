@@ -12,7 +12,7 @@ class Config {}
 object Config {
   private var verbose = false
 
-  private var timeout = 60 * 60 * 1000
+  private var timeout = 30 * 60 * 1000 // 60 * 60 * 1000
 
   def getTimeout: Int = timeout
 

@@ -25,7 +25,7 @@ class MainController(
                       val propFactory: PropertyFactory,
                       val nativeProvider: NativeFunctionProvider
                     ) extends MainControllerInterface {
-  val title: String = "OmniMtg 2020-03-13"
+  val title: String = "OmniMtg 2020-03-20"
   // TODO update version
 
   def saveProps(): Unit = {
@@ -36,7 +36,7 @@ class MainController(
     }
   }
 
-  val REMOVE_FROM_CSV: String = "REMOVE_FROM_CSV"
+  //  val REMOVE_FROM_CSV: String = "REMOVE_FROM_CSV"
   val removeIfCommentContainsUnique = "#unique"
 
   // CSV indices
@@ -44,7 +44,7 @@ class MainController(
   val COMMENT = 14
 
   // constant
-  val problemCardEditions = List(
+  /*val problemCardEditions = List(
     "Fallen Empires", "Antiquities", "Homelands", "Alliances", "Chronicles"
   )
   val problemCardNames = List(
@@ -59,17 +59,17 @@ class MainController(
     "Gruul Guildgate",
     "Orzhov Guildgate",
     "Rakdos Guildgate"
-  )
+  )*/
 
   val splitter = "\";\""
 
-  val leaveOutCards = List(
+  /*val leaveOutCards = List(
     "Mountain",
     "Island",
     "Plains",
     "Forest",
     "Swamp"
-  )
+  )*/
 
   // when scryfall deployed: 3, before: 2
   val snapApiVersion: String = "3"
@@ -750,49 +750,49 @@ class MainController(
 
   def calcLookup(mkm: M11DedicatedApp, productIds: Set[Long]): Int = {
     return 0
+    /*
+        productIds.toSeq.flatMap { id =>
+          if (mkmReqTimoutable(mkmProductEndpoint + "/" + id, "GET", (url, method) =>
+            mkm.request(url, method, null, null, true))) {
+            val prodNode =
+              xmlList(getXml(mkm.responseContent).getFirstChild.getChildNodes)
+                .find(x => x.getNodeName == "product")
+            val number =
+              prodNode.flatMap { x =>
+                xmlList(x.getChildNodes)
+                  .find(x => x.getNodeName == "number")
+                  .map(_.getTextContent)
+              }
 
-    productIds.toSeq.flatMap { id =>
-      if (mkmReqTimoutable(mkmProductEndpoint + "/" + id, "GET", (url, method) =>
-        mkm.request(url, method, null, null, true))) {
-        val prodNode =
-          xmlList(getXml(mkm.responseContent).getFirstChild.getChildNodes)
-            .find(x => x.getNodeName == "product")
-        val number =
-          prodNode.flatMap { x =>
-            xmlList(x.getChildNodes)
-              .find(x => x.getNodeName == "number")
-              .map(_.getTextContent)
+            val isVersionCard =
+              prodNode.flatMap { x =>
+                xmlList(x.getChildNodes)
+                  .find(x => x.getNodeName == "enName")
+                  .map(_.getTextContent.contains(" (Version "))
+              }.getOrElse(false)
+
+            if (Config.isVerbose) {
+              println("Prod " + id + " => coll num <" + number + "> / version card " + isVersionCard)
+            }
+            if (isVersionCard) {
+              idProductToCollectorNumber.put(id, REMOVE_FROM_CSV)
+              None
+            } else {
+              number.map { num =>
+                idProductToCollectorNumber.put(id, num)
+                1
+              }
+            }
+          } else {
+            None
           }
-
-        val isVersionCard =
-          prodNode.flatMap { x =>
-            xmlList(x.getChildNodes)
-              .find(x => x.getNodeName == "enName")
-              .map(_.getTextContent.contains(" (Version "))
-          }.getOrElse(false)
-
-        if (Config.isVerbose) {
-          println("Prod " + id + " => coll num <" + number + "> / version card " + isVersionCard)
-        }
-        if (isVersionCard) {
-          idProductToCollectorNumber.put(id, REMOVE_FROM_CSV)
-          None
-        } else {
-          number.map { num =>
-            idProductToCollectorNumber.put(id, num)
-            1
-          }
-        }
-      } else {
-        None
-      }
-    }.sum
+        }.sum*/
   }
 
   def refreshLookupIfNeeded(mkm: M11DedicatedApp, csv: Array[String]): Unit = {
     return ()
 
-    val productIdsFromCsvThatNeedLookup =
+    /*val productIdsFromCsvThatNeedLookup =
       csv.flatMap { x =>
         val parts = x.split(splitter)
         val idProduct = Try(parts(IDPRODUCT).toLong)
@@ -818,7 +818,7 @@ class MainController(
       println("collectorNumber lookup: newEntries=" + newEntries + ", total: " + idProductToCollectorNumber.size)
     } else {
       println("collectorNumber lookup: diff was empty, total: " + idProductToCollectorNumber.size)
-    }
+    }*/
 
     /*val doc = getXml(xmlDocString)
     val response = doc.getChildNodes.item(0)
@@ -1041,16 +1041,18 @@ class MainController(
         }
       }
       val result = partsReplaced.mkString(splitter)
-      if (
+      /*if (
         leaveOutCards.contains(cardName) ||
           oversizedNames.contains(cardName)) {
         None
-      } else if (idProduct == "idProduct") {
+      } else*/
+      if (idProduct == "idProduct") {
         Some(result + ";\"collectorNumber\"")
       } else {
         val collectorNumberMaybe = idProductToCollectorNumber.get(idProduct.toLong)
         if (parts(COMMENT).toLowerCase.contains(removeIfCommentContainsUnique)
-          || collectorNumberMaybe.contains(REMOVE_FROM_CSV)) {
+        //  || collectorNumberMaybe.contains(REMOVE_FROM_CSV)
+        ) {
           None
         } else {
           Some(result + ";\"" + collectorNumberMaybe.getOrElse("") + "\"")
